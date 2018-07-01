@@ -1,0 +1,6 @@
+# Standard project files
+node_modules
+
+# Parcel output
+.cache
+dist/
