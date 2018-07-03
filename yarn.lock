@@ -16,6 +16,10 @@
     snabbdom-selector "^3.0.0"
     xstream "*"
 
+"@cycle/isolate@>=3", "@cycle/isolate@^3.3.0":
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/@cycle/isolate/-/isolate-3.3.0.tgz#f23c9dfe0ac604240addf915693c4e78fef2fd28"
+
 "@cycle/run@*":
   version "4.4.0"
   resolved "https://registry.yarnpkg.com/@cycle/run/-/run-4.4.0.tgz#8013702548b1992f665b9f2f42882996871ccf8f"
@@ -1320,6 +1324,15 @@ csso@~2.3.1:
   dependencies:
     clap "^1.0.9"
     source-map "^0.5.3"
+
+cycle-onionify@^6.1.0:
+  version "6.1.0"
+  resolved "https://registry.yarnpkg.com/cycle-onionify/-/cycle-onionify-6.1.0.tgz#537a208f71946d5277b3908f6937022265ac3519"
+  dependencies:
+    "@cycle/isolate" ">=3"
+    "@cycle/run" "*"
+    quicktask "1.1.0"
+    xstream ">=10"
 
 d@1:
   version "1.0.0"
@@ -4374,7 +4387,7 @@ xmlbuilder@~9.0.1:
   version "9.0.7"
   resolved "https://registry.yarnpkg.com/xmlbuilder/-/xmlbuilder-9.0.7.tgz#132ee63d2ec5565c557e20f4c22df9aca686b10d"
 
-xstream@*, "xstream@10.x || 11.x", xstream@^11.7.0:
+xstream@*, "xstream@10.x || 11.x", xstream@>=10, xstream@^11.7.0:
   version "11.7.0"
   resolved "https://registry.yarnpkg.com/xstream/-/xstream-11.7.0.tgz#6557e9710e1ab05ae28b6902af41745250d32e36"
   dependencies:

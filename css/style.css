@@ -1,0 +1,13 @@
+body {
+  margin: 10px;
+}
+
+#view-3d {
+  height: calc(100vh - 20px);
+  width: calc(100vw - 20px);
+}
+
+a-scene {
+  height: 300px;
+  width: 600px;
+}
