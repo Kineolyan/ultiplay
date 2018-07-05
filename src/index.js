@@ -1,13 +1,13 @@
 import xs from 'xstream';
 import Cycle from '@cycle/xstream-run';
-import {h, div, button, makeDOMDriver} from '@cycle/dom';
+import {h, div, span, button, makeDOMDriver} from '@cycle/dom';
 import onionify from 'cycle-onionify';
 import isolate from '@cycle/isolate';
 require('aframe');
 require("aframe-environment-component");
 
 const Button = (sources) => {
-	let props$ = sources.props$;
+  let props$ = sources.props$;
 	const click$ = sources.DOM.select('.button').events('click');
   const delta$ = props$
     .map((props) => click$.map(() => props.amount))
@@ -17,9 +17,35 @@ const Button = (sources) => {
 	return {
 		DOM: vdom$,
 		delta$: delta$
-	}
+	};
 }
 
+const IncDecButtons = (sources) => {
+	const IncrementButton = isolate(Button);
+	const DecrementButton = isolate(Button);
+
+	const incrementButtonProps$ = xs.of({text: 'Increment', amount: 1}).remember();
+	const decrementButtonProps$ = xs.of({text: 'Decrement', amount: -1}).remember();
+
+	const incrementButton = IncrementButton({DOM: sources.DOM, props$: incrementButtonProps$});
+	const decrementButton = DecrementButton({DOM: sources.DOM, props$: decrementButtonProps$});
+
+  let props$ = sources.props$;
+  let state$ = sources.onion.state$;
+  const reducer$ = xs.merge(incrementButton.delta$, decrementButton.delta$)
+    .map(value => prev => Math.max(1, value + prev));
+  const vdom$ = xs.combine(props$, incrementButton.DOM, decrementButton.DOM)
+    .map(([props, incrementVTree, decrementVTree]) =>  div([
+      span(props.text || "+/-"),
+      incrementVTree,
+      decrementVTree
+    ]));
+
+	return {
+		DOM: vdom$,
+    onion: reducer$
+	};
+};
 
 const cyclinders = (count) => {
   let res = [];
@@ -38,7 +64,7 @@ const cyclinders = (count) => {
   return res;
 };
 
-const renderScene = () => h(
+const renderScene = (state) => h(
   'a-scene', 
   {
     attrs: {
@@ -47,7 +73,7 @@ const renderScene = () => h(
     }
   }, 
   [
-    ...cyclinders(3),
+    ...cyclinders(state.nbPlayers),
     h(
       'a-entity',
       {
@@ -64,35 +90,23 @@ const renderScene = () => h(
   ]);
 
 const main = (sources) => {
+  const PlayerInc = isolate(IncDecButtons, 'nbPlayers');
+	const playerIncProps$ = xs.of({text: 'Players'}).remember();
+	const playerInc = PlayerInc(
+    Object.assign({}, sources, {props$: playerIncProps$}));
+
+  const initialReducer$ = xs.of(() => ({nbPlayers: 1}));
+  const reducer$ = xs.merge(initialReducer$, playerInc.onion);
+
   const state$ = sources.onion.state$;
-
-	const IncrementButton = isolate(Button);
-	const DecrementButton = isolate(Button);
-
-	const incrementButtonProps$ = xs.of({text: 'Increment', amount: 1}).remember();
-	const decrementButtonProps$ = xs.of({text: 'Decrement', amount: -1}).remember();
-
-	const incrementButton = IncrementButton({DOM: sources.DOM, props$: incrementButtonProps$});
-	const decrementButton = DecrementButton({DOM: sources.DOM, props$: decrementButtonProps$});
-
-  const initialReducer$ = xs.of(() => ({value: 0}));
-	const count$ = xs.merge(incrementButton.delta$, decrementButton.delta$)
-    .map(value => (prev) => ({value: value + prev.value}));
-  const reducer$ = xs.merge(initialReducer$, count$);
-
-  const resultDom$ = state$.map(state => div(`Current count: ${state.value}`));
-  const vdom$ = xs.combine(resultDom$, incrementButton.DOM, decrementButton.DOM)
-    .map(([count, incrementVTree, decrementVTree]) => div(
+  const vdom$ = xs.combine(state$, playerInc.DOM)
+    .map(([state, playerInc]) => div(
       [
         div('Small browser application to display Ultimate tactics in 3D'),
-        count,
-        div([
-          incrementVTree,
-          decrementVTree
-        ]),
+        playerInc,
         div(
           {attrs: {id: 'view-3d'}},
-          [renderScene()])
+          [renderScene(state)])
       ]));
 
   return {
