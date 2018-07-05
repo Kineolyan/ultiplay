@@ -10,7 +10,7 @@ const Button = (sources) => {
 	let props$ = sources.props$;
 	const click$ = sources.DOM.select('.button').events('click');
   const delta$ = props$
-    .map((props) => click$.map((ev) => props.amount))
+    .map((props) => click$.map(() => props.amount))
     .flatten();
 	const vdom$ = props$.map(props => button('.button', [props.text]));
 
@@ -29,8 +29,8 @@ const cyclinders = (count) => {
       {
         attrs: {
           position: `0 1 ${-3 - i * 1.5}`,
-          radius: '0.5',
-          height: '1.5',
+          radius: '0.4',
+          height: '1.8',
           color: '#FFC65D'
         }
       }));
@@ -52,8 +52,8 @@ const renderScene = () => h(
       'a-entity',
       {
         attrs: {
-          position: '0 1 0',
-          rotation: '-15 0 0'
+          position: '1 0 0',
+          rotation: '0 15 0'
         }
       },
       [
@@ -75,17 +75,10 @@ const main = (sources) => {
 	const incrementButton = IncrementButton({DOM: sources.DOM, props$: incrementButtonProps$});
 	const decrementButton = DecrementButton({DOM: sources.DOM, props$: decrementButtonProps$});
 
-	const count$ = xs.merge(incrementButton.delta$, decrementButton.delta$)
-    .fold((acc, x) => acc + x, 0)
-    .mapTo(v => {
-      console.log('value', v);
-      return v;
-    })
-    .mapTo(value => ({value}));
   const initialReducer$ = xs.of(() => ({value: 0}));
-  const addOneReducer$ = xs.periodic(1000)
-    .mapTo((prev) => ({ value: prev.value + 1 }));
-  const reducer$ = xs.merge(initialReducer$, addOneReducer$);
+	const count$ = xs.merge(incrementButton.delta$, decrementButton.delta$)
+    .map(value => (prev) => ({value: value + prev.value}));
+  const reducer$ = xs.merge(initialReducer$, count$);
 
   const resultDom$ = state$.map(state => div(`Current count: ${state.value}`));
   const vdom$ = xs.combine(resultDom$, incrementButton.DOM, decrementButton.DOM)
@@ -111,3 +104,20 @@ const main = (sources) => {
 Cycle.run(
   onionify(main), 
   {DOM: makeDOMDriver('#app')});
+
+// var a = xs.periodic(1000)
+//   .filter(i => i % 2 === 0)
+//   .map(i => i * i)
+//   .debug('a')
+//   .take(10);
+// var b = xs.periodic(750)
+//     .fold((acc, c) => acc + c, 0)
+//     .debug('b')
+//     .take(15);
+// const c = xs.merge(a, b);
+
+// c.addListener({
+//   next: i => console.log(i),
+//   error: err => console.error(err),
+//   complete: () => console.log('completed'),
+// })
