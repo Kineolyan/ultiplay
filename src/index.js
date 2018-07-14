@@ -8,6 +8,7 @@ require("aframe-environment-component");
 
 import {Button, IncDecButtons} from './components/buttons.js';
 import {renderScene} from './components/3d-vision.js';
+import {Field} from './components/field.js';
 
 const main = (sources) => {
   const PlayerInc = isolate(IncDecButtons, 'nbPlayers');
@@ -18,6 +19,7 @@ const main = (sources) => {
   const heightProps$ = xs.of({text: 'Height'}).remember();
   const heightInc = HeightInc(
     Object.assign({}, sources, {props$: heightProps$}));
+  const field = isolate(Field)(sources);
 
   const initialReducer$ = xs.of(() => ({nbPlayers: 1, height: 0}));
   const reducer$ = xs.merge(
@@ -26,15 +28,21 @@ const main = (sources) => {
     heightInc.onion);
 
   const state$ = sources.onion.state$;
-  const vdom$ = xs.combine(state$, playerInc.DOM, heightInc.DOM)
-    .map(([state, playerInc, heightInc]) => div(
+  const vdom$ = xs.combine(
+      state$, 
+      playerInc.DOM, 
+      heightInc.DOM,
+      field.DOM)
+    .map(([state, playerInc, heightInc, field]) => div(
       [
         div('Small browser application to display Ultimate tactics in 3D'),
         playerInc,
         heightInc,
+        field,
         div(
           {attrs: {id: 'view-3d'}},
-          [renderScene(state)])
+          // [renderScene(state)]
+        )
       ]));
 
   return {

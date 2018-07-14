@@ -7,6 +7,10 @@ body {
   width: calc(100vw - 20px);
 }
 
+#field svg {
+  border: solid black 1px;
+}
+
 a-scene {
   height: 300px;
   width: 600px;
