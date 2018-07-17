@@ -19,9 +19,13 @@ const main = (sources) => {
   const heightProps$ = xs.of({text: 'Height'}).remember();
   const heightInc = HeightInc(
     Object.assign({}, sources, {props$: heightProps$}));
-  const field = isolate(Field)(sources);
+  const field = isolate(Field, 'points')(sources);
 
-  const initialReducer$ = xs.of(() => ({nbPlayers: 1, height: 0}));
+  const initialReducer$ = xs.of(() => ({
+    nbPlayers: 1, 
+    height: 0,
+    points: {id: "p-a1", x: 158, y: 150}
+  }));
   const reducer$ = xs.merge(
     initialReducer$,
     playerInc.onion,

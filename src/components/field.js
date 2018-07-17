@@ -24,16 +24,16 @@ const Field = (sources) => {
     });
   const endDrag$ = svg$.events('mouseup');
   const onDrag$ = svg$.events('mousemove');
-  const position$ = onDrag$.map(e => {
+  const svgPosition$ = onDrag$.map(e => {
     e.preventDefault();
     const svg = e.ownerTarget;
     return getMousePosition(svg, e);
   });
 
-  const state$ = startDrag$
+  const position$ = startDrag$
     .map(({element, offset}) => {
       const id = element.getAttributeNS(null, 'cid');
-      return position$
+      return svgPosition$
         .map(position => ({
           id,
           x: position.x - offset.x,
@@ -67,8 +67,8 @@ const Field = (sources) => {
     }
   };
 
-  const combo$ = xs.merge(
-      xs.combine(startDrag$, state$),
+  const stateUpdate$ = xs.merge(
+      xs.combine(startDrag$, position$),
       dragTrigger$)
     .fold(
       (before, v) => {
@@ -96,9 +96,13 @@ const Field = (sources) => {
       {trigger: -1})
     .filter(p => p.state)
     .map(combo => combo.payload[1]);
-  combo$.addListener({next: e => console.log('dbg', e)});
+  stateUpdate$.addListener({next: e => console.log('dbg', e)});
 
-  const vdom$ = xs.of(
+  const reduce$ = stateUpdate$
+    .map(update => prev => update);
+
+    let state$ = sources.onion.state$;
+    const vdom$ = state$.map(element =>
       div(
         '#field',
         [
@@ -110,16 +114,16 @@ const Field = (sources) => {
               h(
                 'circle.draggable',
                 {attrs: {
-                  cx: 150,
-                  cy: 150,
+                  cx: element.x,
+                  cy: element.y,
                   r: 15,
                   stroke: 'black',
                   strokeWidth: 1,
                   fill: 'blue',
                   draggable: 'true',
-                  cid: 'p-a1'
+                  cid: element.id
                 }})
-            ]
+              ]
           )]
         ))
     .remember();
