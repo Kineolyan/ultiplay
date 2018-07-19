@@ -9,6 +9,21 @@ function getMousePosition(svg, evt) {
   };
 }
 
+const createCombobject = (acc, v) => {
+  if (v === 1 || v === -1) {
+    return Object.assign({}, acc, {trigger: v});
+  } else {
+    return Object.assign({}, acc, {payload: v});
+  }
+};
+
+const updateState = (state, value) => {
+  const idx = state.find(v => v.id === value.id);
+  const copy = [...state];
+  copy[idx] = value;
+  return copy;
+};
+
 const Field = (sources) => {
   const svg$ = sources.DOM.select('svg');
   const startDrag$ = svg$.events('mousedown')
@@ -59,14 +74,6 @@ const Field = (sources) => {
       },
       -1);
 
-  const createCombobject = (acc, v) => {
-    if (v === 1 || v === -1) {
-      return Object.assign({}, acc, {trigger: v});
-    } else {
-      return Object.assign({}, acc, {payload: v});
-    }
-  };
-
   const stateUpdate$ = xs.merge(
       xs.combine(startDrag$, position$),
       dragTrigger$)
@@ -99,10 +106,10 @@ const Field = (sources) => {
   stateUpdate$.addListener({next: e => console.log('dbg', e)});
 
   const reduce$ = stateUpdate$
-    .map(update => prev => update);
+    .map(update => state => updateState(state, update));
 
     let state$ = sources.onion.state$;
-    const vdom$ = state$.map(element =>
+    const vdom$ = state$.map(elements =>
       div(
         '#field',
         [
@@ -110,7 +117,7 @@ const Field = (sources) => {
           h(
             'svg',
             {attrs: {width: 300, height: 300}},
-            [
+            elements.map(element =>
               h(
                 'circle.draggable',
                 {attrs: {
@@ -122,8 +129,7 @@ const Field = (sources) => {
                   fill: 'blue',
                   draggable: 'true',
                   cid: element.id
-                }})
-              ]
+                }}))
           )]
         ))
     .remember();

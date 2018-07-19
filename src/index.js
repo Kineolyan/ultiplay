@@ -24,7 +24,9 @@ const main = (sources) => {
   const initialReducer$ = xs.of(() => ({
     nbPlayers: 1, 
     height: 0,
-    points: {id: "p-a1", x: 158, y: 150}
+    points: [
+      {id: "p-a1", x: 150, y: 150}
+    ]
   }));
   const reducer$ = xs.merge(
     initialReducer$,
