@@ -22,16 +22,35 @@ const main = (sources) => {
   const field = isolate(Field, 'points')(sources);
 
   const initialReducer$ = xs.of(() => ({
-    nbPlayers: 1, 
+    nbPlayers: 2, 
     height: 0,
     points: [
-      {id: "p-a1", x: 150, y: 150}
+      {id: "p-a1", x: 150, y: 150},
+      {id: "p-a2", x: 150, y: 200}
     ]
   }));
+
+  const addRemovePlayers$ = playerInc.increment
+    .map(value => state => {
+      const copy = [...state.points];
+      if (value > 0) {
+        // Add a new player
+        copy.push({
+          id: `p-a${copy.length}`,
+          x: 0,
+          y: 0
+        });
+      } else {
+        // Remove the last player
+        copy.pop();
+      }
+      return Object.assign({}, state, {points: copy});
+    });
   const reducer$ = xs.merge(
     initialReducer$,
     playerInc.onion,
-    heightInc.onion);
+    heightInc.onion,
+    addRemovePlayers$);
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
