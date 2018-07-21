@@ -9,6 +9,7 @@ require("aframe-environment-component");
 import {Button, IncDecButtons} from './components/buttons.js';
 import {renderScene} from './components/3d-vision.js';
 import {Field} from './components/field.js';
+import Codec from './components/codec.js';
 
 const main = (sources) => {
   const PlayerInc = isolate(IncDecButtons, 'nbPlayers');
@@ -20,6 +21,11 @@ const main = (sources) => {
   const heightInc = HeightInc(
     Object.assign({}, sources, {props$: heightProps$}));
   const field = isolate(Field, 'points')(sources);
+  // const codecLens = {
+  //   get: state => state,
+  //   set: (state) => Object.assign({}, state)
+  // };
+  const codec = isolate(Codec, 'points')(sources);
 
   const initialReducer$ = xs.of(() => ({
     nbPlayers: 2, 
@@ -54,21 +60,24 @@ const main = (sources) => {
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
-      state$, 
+      state$,
       playerInc.DOM, 
       heightInc.DOM,
-      field.DOM)
-    .map(([state, playerInc, heightInc, field]) => div(
+      field.DOM,
+      codec.DOM)
+    .map(([state, playerInc, heightInc, field, codec]) => div(
       [
         div('Small browser application to display Ultimate tactics in 3D'),
         playerInc,
         heightInc,
         field,
-        div(
-          {attrs: {id: 'view-3d'}},
+        // div(
+        //   {attrs: {id: 'view-3d'}},
           // [renderScene(state)]
-        )
-      ]));
+        // ),
+        codec
+      ]))
+    .replaceError(() => xs.of(div('Internal error')));
 
   return {
     DOM: vdom$,

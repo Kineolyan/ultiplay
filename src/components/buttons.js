@@ -1,5 +1,4 @@
 import xs from 'xstream';
-import Cycle from '@cycle/xstream-run';
 import {h, div, span, button} from '@cycle/dom';
 import isolate from '@cycle/isolate';
 
