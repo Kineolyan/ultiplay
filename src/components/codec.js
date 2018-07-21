@@ -38,7 +38,7 @@ const CoDec = (sources) => {
         return null;
       }
     })
-    .startWith(null);
+    .startWith(undefined);
   const exportedValue$ = trigger(value$, submit$)
     .debug('export');
   // const exportedValue$ = value$.compose(split(submit$))
@@ -50,8 +50,10 @@ const CoDec = (sources) => {
     import$,
     submit$.mapTo(undefined));
 
-  const reducer$ = xs.combine(mode$, value$)
-    .map(([mode, payload]) => state => ({mode, payload}));
+  const reducer$ = xs.merge(
+      mode$.map(mode => ({mode})),
+      value$.map(value => ({payload: value})))
+    .map(state => prev => state);
 
   const state$ = sources.onion.state$;
   const vdom$ = state$.map(state =>

@@ -1,6 +1,6 @@
 import xs from 'xstream';
 import Cycle from '@cycle/xstream-run';
-import {h, div, span, button, makeDOMDriver} from '@cycle/dom';
+import {h, div, span, button, makeDOMDriver, i} from '@cycle/dom';
 import onionify from 'cycle-onionify';
 import isolate from '@cycle/isolate';
 require('aframe');
@@ -33,9 +33,12 @@ const main = (sources) => {
       mode
     }),
     set: (state, {mode, payload}) => {
-      const newState = Object.assign({}, state, {mode});
-      if (payload !== null) {
+      const newState = Object.assign({}, state);
+      if (payload !== undefined) {
         Object.assign(newState, payload);
+      }
+      if (mode !== undefined) {
+        newState.mode = mode;
       }
       return newState;
     }
