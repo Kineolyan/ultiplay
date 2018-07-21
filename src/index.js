@@ -21,14 +21,18 @@ const main = (sources) => {
   const heightInc = HeightInc(
     Object.assign({}, sources, {props$: heightProps$}));
   const field = isolate(Field, 'points')(sources);
-  // const codecLens = {
-  //   get: state => state,
-  //   set: (state) => Object.assign({}, state)
-  // };
-  const codec = isolate(Codec, 'points')(sources);
+  const codecLens = {
+    get: ({nbPlayers, height}) => ({nbPlayers, height}),
+    set: (state, childState) => Object.assign({}, state, childState)
+  };
+  const fullLens = {
+    get: (state) => (state),
+    set: (state, childState) => childState
+  };
+  const codec = isolate(Codec, {onion: fullLens})(sources);
 
   const initialReducer$ = xs.of(() => ({
-    nbPlayers: 2, 
+    nbPlayers: 2,
     height: 0,
     points: [
       {id: "p-a1", x: 150, y: 150},
@@ -42,7 +46,7 @@ const main = (sources) => {
       if (value > 0) {
         // Add a new player
         copy.push({
-          id: `p-a${copy.length}`,
+          id: `p-a${copy.length + 1}`,
           x: 0,
           y: 0
         });
@@ -56,12 +60,13 @@ const main = (sources) => {
     initialReducer$,
     playerInc.onion,
     heightInc.onion,
+    field.onion,
     addRemovePlayers$);
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
       state$,
-      playerInc.DOM, 
+      playerInc.DOM,
       heightInc.DOM,
       field.DOM,
       codec.DOM)
@@ -86,7 +91,7 @@ const main = (sources) => {
 }
 
 Cycle.run(
-  onionify(main), 
+  onionify(main),
   {DOM: makeDOMDriver('#app')});
 
 // var a = xs.periodic(1000)

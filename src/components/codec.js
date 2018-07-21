@@ -1,5 +1,5 @@
 import xs from 'xstream';
-import {h, div, button} from '@cycle/dom';
+import {h, div, button, textarea} from '@cycle/dom';
 
 const CoDec = (sources) => {
 	const click$ = sources.DOM.select('.button').events('click');
@@ -9,8 +9,8 @@ const CoDec = (sources) => {
       '#codec',
       [
         h(
-          'textarea',
-          JSON.stringify(state)),
+          'pre',
+          JSON.stringify(state, null, 2)),
         div([
           button('Import'),
           button('Export')

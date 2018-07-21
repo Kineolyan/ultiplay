@@ -11,6 +11,11 @@ body {
   border: solid black 1px;
 }
 
+#codec textarea {
+  width: 95vw;
+  height: 250px;
+}
+
 a-scene {
   height: 300px;
   width: 600px;

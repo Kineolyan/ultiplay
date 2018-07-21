@@ -18,7 +18,7 @@ const createCombobject = (acc, v) => {
 };
 
 const updateState = (state, value) => {
-  const idx = state.find(v => v.id === value.id);
+  const idx = state.findIndex(v => v.id === value.id);
   const copy = [...state];
   copy[idx] = value;
   return copy;
@@ -85,9 +85,9 @@ const Field = (sources) => {
             const [{element}, {x, y}] = next.payload;
             element.setAttributeNS(null, 'cx', x);
             element.setAttributeNS(null, 'cy', y);
-            
+
             next.state = false;
-            
+
             return next;
           } else if (before.trigger > 0) { // && next.trigger < 0
             next.state = true;
@@ -99,13 +99,13 @@ const Field = (sources) => {
         } else {
           return next;
         }
-      }, 
+      },
       {trigger: -1})
     .filter(p => p.state)
     .map(combo => combo.payload[1]);
   stateUpdate$.addListener({next: e => console.log('dbg', e)});
 
-  const reduce$ = stateUpdate$
+  const reducer$ = stateUpdate$
     .map(update => state => updateState(state, update));
 
     let state$ = sources.onion.state$;
@@ -135,7 +135,8 @@ const Field = (sources) => {
     .remember();
 
 	return {
-		DOM: vdom$
+    DOM: vdom$,
+    onion: reducer$
 	};
 }
 
