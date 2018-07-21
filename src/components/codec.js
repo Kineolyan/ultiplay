@@ -7,9 +7,12 @@ import {trigger} from '../operators/trigger.js';
 
 const renderMode = (state) => {
   switch (state.mode) {
-    case 'export': return h(
-      'pre',
-      JSON.stringify(state.payload, null, 2));
+    case 'export': return div([
+      h(
+        'pre',
+        JSON.stringify(state.payload, null, 2)),
+      button('.close', 'Close')
+    ]);
     case 'import': return div([
       textarea(''),
       button('.submit', 'Submit')
@@ -25,8 +28,8 @@ const CoDec = (sources) => {
   const import$ = sources.DOM.select('.import')
     .events('click')
     .mapTo('import');
-  const submit$ = sources.DOM.select('.submit').events('click')
-    .debug('click');
+  const submit$ = sources.DOM.select('.submit').events('click');
+  const close$ = sources.DOM.select('.close').events('click');
   const value$ = sources.DOM.select('#codec').events('input')
     .filter(e => e.srcElement.type === 'textarea')
     .compose(debounce(250))
@@ -39,8 +42,7 @@ const CoDec = (sources) => {
       }
     })
     .startWith(undefined);
-  const exportedValue$ = trigger(value$, submit$)
-    .debug('export');
+  const exportedValue$ = trigger(value$, submit$);
   // const exportedValue$ = value$.compose(split(submit$))
   //   .map(s => s.last())
   //   .flatten()
@@ -48,7 +50,7 @@ const CoDec = (sources) => {
   const mode$ = xs.merge(
     export$,
     import$,
-    submit$.mapTo(undefined));
+    xs.merge(submit$, close$).mapTo(null));
 
   const reducer$ = xs.merge(
       mode$.map(mode => ({mode})),
