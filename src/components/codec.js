@@ -3,7 +3,7 @@ import debounce from 'xstream/extra/debounce';
 import split from 'xstream/extra/split';
 import {h, div, button, textarea, sub} from '@cycle/dom';
 
-import {trigger} from '../operators/trigger.js';
+import {composableTrigger as trigger} from '../operators/trigger.js';
 
 const renderMode = (state) => {
   switch (state.mode) {
@@ -41,8 +41,9 @@ const CoDec = (sources) => {
         return null;
       }
     })
-    .startWith(undefined);
-  const exportedValue$ = trigger(value$, submit$);
+    .startWith(undefined)
+    .compose(trigger(submit$));
+  // const exportedValue$ = trigger(value$, submit$);
   // const exportedValue$ = value$.compose(split(submit$))
   //   .map(s => s.last())
   //   .flatten()

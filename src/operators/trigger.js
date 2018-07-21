@@ -2,7 +2,6 @@ import xs from 'xstream';
 
 const trigger = (source$, trigger$) => xs.create({
 	start(listener) {
-		// debugger;
 		this.sourceListener = {
 			next: (value) => {
 				this.last = value;
@@ -13,7 +12,7 @@ const trigger = (source$, trigger$) => xs.create({
 		};
 		this.triggerListener = {
 			next: () => {
-				if (this.error !== undefined) {
+				if (this.error === undefined) {
 					listener.next(this.last)
 				} else {
 					listener.error(this.error);
@@ -38,6 +37,9 @@ const trigger = (source$, trigger$) => xs.create({
 	last: undefined
 });
 
+const composableTrigger = trigger$ => source$ => trigger(source$, trigger$);
+
 export {
-	trigger
+	trigger,
+	composableTrigger
 };
