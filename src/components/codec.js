@@ -1,26 +1,74 @@
 import xs from 'xstream';
-import {h, div, button, textarea} from '@cycle/dom';
+import debounce from 'xstream/extra/debounce';
+import split from 'xstream/extra/split';
+import {h, div, button, textarea, sub} from '@cycle/dom';
+
+import {trigger} from '../operators/trigger.js';
+
+const renderMode = (state) => {
+  switch (state.mode) {
+    case 'export': return h(
+      'pre',
+      JSON.stringify(state.payload, null, 2));
+    case 'import': return div([
+      textarea(''),
+      button('.submit', 'Submit')
+    ]);
+    default: return undefined;
+  }
+};
 
 const CoDec = (sources) => {
-	const click$ = sources.DOM.select('.button').events('click');
+  const export$ = sources.DOM.select('.export')
+    .events('click')
+    .mapTo('export');
+  const import$ = sources.DOM.select('.import')
+    .events('click')
+    .mapTo('import');
+  const submit$ = sources.DOM.select('.submit').events('click')
+    .debug('click');
+  const value$ = sources.DOM.select('#codec').events('input')
+    .filter(e => e.srcElement.type === 'textarea')
+    .compose(debounce(250))
+    .map(e => e.srcElement.value)
+    .map(value => {
+      try {
+        return JSON.parse(value);
+      } catch (e) {
+        return null;
+      }
+    })
+    .startWith(null);
+  const exportedValue$ = trigger(value$, submit$)
+    .debug('export');
+  // const exportedValue$ = value$.compose(split(submit$))
+  //   .map(s => s.last())
+  //   .flatten()
+  //   .addListener({next: e => console.log('export', e)});
+  const mode$ = xs.merge(
+    export$,
+    import$,
+    submit$.mapTo(undefined));
+
+  const reducer$ = xs.combine(mode$, value$)
+    .map(([mode, payload]) => state => ({mode, payload}));
+
   const state$ = sources.onion.state$;
-  const vdom$ = state$.debug('inner').map(state =>
+  const vdom$ = state$.map(state =>
     div(
       '#codec',
       [
-        h(
-          'pre',
-          JSON.stringify(state, null, 2)),
         div([
-          button('Import'),
-          button('Export')
-        ])
+          button('.import', 'Import'),
+          button('.export', 'Export')
+        ]),
+        renderMode(state)
       ]
-    ))
-    .debug('cdc');
+    ));
 
 	return {
-		DOM: vdom$
+    DOM: vdom$,
+    onion: reducer$
 	};
 }
 

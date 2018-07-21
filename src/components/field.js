@@ -103,7 +103,6 @@ const Field = (sources) => {
       {trigger: -1})
     .filter(p => p.state)
     .map(combo => combo.payload[1]);
-  stateUpdate$.addListener({next: e => console.log('dbg', e)});
 
   const reducer$ = stateUpdate$
     .map(update => state => updateState(state, update));
