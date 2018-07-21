@@ -6,12 +6,10 @@ import isolate from '@cycle/isolate';
 require('aframe');
 require("aframe-environment-component");
 
-import {Button, IncDecButtons} from './components/buttons.js';
-import {renderScene} from './components/3d-vision.js';
+import {IncDecButtons} from './components/buttons.js';
+import {Scene} from './components/3d-vision.js';
 import {Field} from './components/field.js';
 import Codec from './components/codec.js';
-
-import {trigger} from './operators/trigger';
 
 const main = (sources) => {
   const PlayerInc = isolate(IncDecButtons, 'nbPlayers');
@@ -24,10 +22,6 @@ const main = (sources) => {
     Object.assign({}, sources, {props$: heightProps$}));
   const field = isolate(Field, 'points')(sources);
   const codecLens = {
-    get: ({nbPlayers, height}) => ({nbPlayers, height}),
-    set: (state, childState) => Object.assign({}, state, childState)
-  };
-  const fullLens = {
     get: ({nbPlayers, height, points, mode}) => ({
       payload: {nbPlayers, height, points},
       mode
@@ -43,7 +37,12 @@ const main = (sources) => {
       return newState;
     }
   };
-  const codec = isolate(Codec, {onion: fullLens})(sources);
+  const codec = isolate(Codec, {onion: codecLens})(sources);
+  const sceneLens = {
+    get: ({height, points}) => ({height, players: points}),
+    set: (state) => state
+  };
+  const scene = isolate(Scene, {onion: sceneLens})(sources);
 
   const initialReducer$ = xs.of(() => ({
     nbPlayers: 2,
@@ -80,21 +79,18 @@ const main = (sources) => {
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
-      state$,
+      scene.DOM,
       playerInc.DOM,
       heightInc.DOM,
       field.DOM,
       codec.DOM)
-    .map(([state, playerInc, heightInc, field, codec]) => div(
+    .map(([scene, playerInc, heightInc, field, codec]) => div(
       [
         div('Small browser application to display Ultimate tactics in 3D'),
         playerInc,
         heightInc,
         field,
-        // div(
-        //   {attrs: {id: 'view-3d'}},
-          // [renderScene(state)]
-        // ),
+        scene,
         codec
       ]))
     .replaceError(() => xs.of(div('Internal error')));
@@ -125,11 +121,3 @@ Cycle.run(
 //   error: err => console.error(err),
 //   complete: () => console.log('completed'),
 // })
-
-
-// const a$ = xs.periodic(100).map(i => i).take(20);
-// const b$ = xs.periodic(450).map(j => j).take(5);
-// trigger(a$, b$).addListener({
-// 	next: e => console.log('value', e),
-// 	complete: () => console.log('the end')
-// });

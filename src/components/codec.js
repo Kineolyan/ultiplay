@@ -1,6 +1,5 @@
 import xs from 'xstream';
 import debounce from 'xstream/extra/debounce';
-import split from 'xstream/extra/split';
 import {h, div, button, textarea, sub} from '@cycle/dom';
 
 import {composableTrigger as trigger} from '../operators/trigger.js';
@@ -43,11 +42,6 @@ const CoDec = (sources) => {
     })
     .startWith(undefined)
     .compose(trigger(submit$));
-  // const exportedValue$ = trigger(value$, submit$);
-  // const exportedValue$ = value$.compose(split(submit$))
-  //   .map(s => s.last())
-  //   .flatten()
-  //   .addListener({next: e => console.log('export', e)});
   const mode$ = xs.merge(
     export$,
     import$,
