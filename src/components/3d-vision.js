@@ -1,13 +1,39 @@
 import {h, div} from '@cycle/dom';
 
-const cylinders = (count) => {
-  let res = [];
-  for (let i = 0; i < count; i += 1) {
-    res.push(
-      cylinder({x: 100, y: 300 + i * 150}));
-  }
-  return res;
-};
+const verticalLine = (x) => h(
+  'a-box',
+  {
+    attrs: {
+      position: `${x} 0 0`,
+      color: 'white',
+      depth: 50,
+      height: 0.5,
+      width: 0.1
+    }
+  });
+
+const horizontalLine = (y) => h(
+  'a-box',
+  {
+    attrs: {
+      position: `0 0 ${y}`,
+      color: 'white',
+      depth: 0.1,
+      height: 0.5,
+      width: 17
+    }
+  });
+
+const drawField = () => [
+  // Lateral bands
+  verticalLine(-9),
+  verticalLine(9),
+  // front/back bands
+  horizontalLine(-25),
+  horizontalLine(-20),
+  horizontalLine(20),
+  horizontalLine(25)
+];
 
 const cylinder = ({x, y}) => {
   return h(
@@ -32,12 +58,13 @@ const renderScene = ({players, height}) => {
       }
     },
     [
+      ...drawField(),
       ...players.map(cylinder),
       h(
         'a-entity',
         {
           attrs: {
-            position: `0 ${height} 10`,
+            position: `0 ${height} 0`,
             rotation: '0 0 0'
           }
         },
