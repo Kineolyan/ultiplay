@@ -46,7 +46,7 @@ const main = (sources) => {
 
   const initialReducer$ = xs.of(() => ({
     nbPlayers: 2,
-    height: 0,
+    height: 2,
     points: [
       {id: "p-a1", x: 150, y: 150},
       {id: "p-a2", x: 150, y: 200}

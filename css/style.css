@@ -3,8 +3,8 @@ body {
 }
 
 #view-3d {
-  height: calc(100vh - 20px);
-  width: calc(100vw - 20px);
+  height: calc(50vh - 20px);
+  width: calc(50vw - 20px);
 }
 
 #field svg {
