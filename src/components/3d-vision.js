@@ -40,7 +40,7 @@ const cylinder = ({x, y}) => {
     'a-cylinder',
     {
       attrs: {
-        position: `${(x / 25).toFixed(2)} 0.9 ${(-y / 25).toFixed(2)}`,
+        position: `${(-x / 20).toFixed(2)} 0.9 ${(-y / 20).toFixed(2)}`,
         radius: '0.4',
         height: '1.8',
         color: '#FFC65D'
@@ -64,8 +64,8 @@ const renderScene = ({players, height}) => {
         'a-entity',
         {
           attrs: {
-            position: `0 ${height} 0`,
-            rotation: '0 0 0'
+            position: `0 ${height} -15`,
+            rotation: '0 180 0'
           }
         },
         [

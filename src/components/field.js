@@ -102,7 +102,12 @@ const Field = (sources) => {
       },
       {trigger: -1})
     .filter(p => p.state)
-    .map(combo => combo.payload[1]);
+    .map(combo => combo.payload[1])
+    .map((position) => {
+      position.x -= 150;
+      position.y -= 150;
+      return position;
+    });
 
   const reducer$ = stateUpdate$
     .map(update => state => updateState(state, update));
@@ -120,8 +125,8 @@ const Field = (sources) => {
               h(
                 'circle.draggable',
                 {attrs: {
-                  cx: element.x,
-                  cy: element.y,
+                  cx: 150 + element.x,
+                  cy: 150 + element.y,
                   r: 15,
                   stroke: 'black',
                   strokeWidth: 1,
