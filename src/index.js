@@ -13,11 +13,18 @@ import Codec from './components/codec.js';
 
 const main = (sources) => {
   const PlayerInc = isolate(IncDecButtons, 'nbPlayers');
-	const playerIncProps$ = xs.of({text: 'Players'}).remember();
+	const playerIncProps$ = xs.of({
+      text: 'Players',
+      min: 1
+    })
+    .remember();
 	const playerInc = PlayerInc(
     Object.assign({}, sources, {props$: playerIncProps$}));
   const HeightInc = isolate(IncDecButtons, 'height');
-  const heightProps$ = xs.of({text: 'Height'}).remember();
+  const heightProps$ = xs.of({
+      text: 'Height',
+      increment: 0.25
+    }).remember();
   const heightInc = HeightInc(
     Object.assign({}, sources, {props$: heightProps$}));
   const field = isolate(Field, 'points')(sources);
@@ -63,7 +70,7 @@ const main = (sources) => {
           x: 0,
           y: 0
         });
-      } else {
+      } else if (copy.length > 1) {
         // Remove the last player
         copy.pop();
       }

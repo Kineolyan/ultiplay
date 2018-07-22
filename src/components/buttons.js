@@ -20,19 +20,25 @@ const IncDecButtons = (sources) => {
 	const IncrementButton = isolate(Button);
 	const DecrementButton = isolate(Button);
 
-	const incrementButtonProps$ = xs.of({text: 'Increment', amount: 1}).remember();
-	const decrementButtonProps$ = xs.of({text: 'Decrement', amount: -1}).remember();
+  const props$ = sources.props$;
+  const incrementButtonProps$ = props$
+    .map(({increment}) => ({text: 'Increment', amount: increment || 1}))
+    .remember();
+	const decrementButtonProps$ = props$
+    .map(({increment}) => ({text: 'Decrement', amount: -(increment || 1)}))
+    .remember();
 
 	const incrementButton = IncrementButton({DOM: sources.DOM, props$: incrementButtonProps$});
 	const decrementButton = DecrementButton({DOM: sources.DOM, props$: decrementButtonProps$});
 
-  let props$ = sources.props$;
   let state$ = sources.onion.state$;
   const picks$ = xs.merge(incrementButton.delta$, decrementButton.delta$);
-  const reducer$ = picks$.map(value => prev => Math.max(1, value + prev));
-  const vdom$ = xs.combine(props$, incrementButton.DOM, decrementButton.DOM)
-    .map(([props, incrementVTree, decrementVTree]) =>  div([
+  const reducer$ = xs.combine(picks$, props$)
+    .map(([value, {min}]) => prev => Math.max((min || 0), value + prev));
+  const vdom$ = xs.combine(state$, props$, incrementButton.DOM, decrementButton.DOM)
+    .map(([state, props, incrementVTree, decrementVTree]) =>  div([
       span(props.text || "+/-"),
+      span(`: ${state}`),
       incrementVTree,
       decrementVTree
     ]));
