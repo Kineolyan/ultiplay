@@ -1,5 +1,6 @@
 import xs from 'xstream';
 import {h, div} from '@cycle/dom';
+import {makeCollection} from 'cycle-onionify';
 
 function getMousePosition(svg, evt) {
   var CTM = svg.getScreenCTM();
@@ -22,6 +23,28 @@ const updateState = (state, value) => {
   const copy = [...state];
   copy[idx] = value;
   return copy;
+};
+
+const makePoint = point => h(
+  'circle.draggable',
+  {attrs: {
+    cx: 150 + point.x,
+    cy: 150 + point.y,
+    r: 15,
+    stroke: 'black',
+    strokeWidth: 1,
+    fill: 'blue',
+    draggable: 'true',
+    cid: point.id
+  }});
+
+const Point = (sources) => {
+  const state$ = sources.onion.state$;
+  const vdom$ = state$.map(makePoint);
+
+  return {
+    DOM: vdom$
+  };
 };
 
 const Field = (sources) => {
@@ -109,11 +132,24 @@ const Field = (sources) => {
       return position;
     });
 
-  const reducer$ = stateUpdate$
-    .map(update => state => updateState(state, update));
+  const reducer$ = stateUpdate$.map(update => state => updateState(state, update));
 
-    let state$ = sources.onion.state$;
-    const vdom$ = state$.map(elements =>
+  // const Points = makeCollection({
+  //   item: Point,
+  //   itemKey: (pointState, index) => pointState.id,
+  //   itemScope: key => key,
+  //   collectSinks: instances => ({
+  //     // onion: instances.pickMerge('onion'),
+  //     DOM: instances.pickCombine('DOM')
+  //   })
+  // });
+  // const points = Points(sources);
+
+  let state$ = sources.onion.state$;
+  // const vdom$ = points.DOM.map(elements =>
+  const vdom$ = state$
+    .map(elements => elements.map(makePoint))
+    .map(elements =>
       div(
         '#field',
         [
@@ -121,21 +157,8 @@ const Field = (sources) => {
           h(
             'svg',
             {attrs: {width: 300, height: 300}},
-            elements.map(element =>
-              h(
-                'circle.draggable',
-                {attrs: {
-                  cx: 150 + element.x,
-                  cy: 150 + element.y,
-                  r: 15,
-                  stroke: 'black',
-                  strokeWidth: 1,
-                  fill: 'blue',
-                  draggable: 'true',
-                  cid: element.id
-                }}))
-          )]
-        ))
+            elements)
+        ]))
     .remember();
 
 	return {
