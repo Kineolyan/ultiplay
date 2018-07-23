@@ -29,8 +29,8 @@ const main = (sources) => {
     Object.assign({}, sources, {props$: heightProps$}));
   const field = isolate(Field, 'points')(sources);
   const codecLens = {
-    get: ({nbPlayers, height, points, mode}) => ({
-      payload: {nbPlayers, height, points},
+    get: ({nbPlayers, height, points, mode, selected}) => ({
+      payload: {nbPlayers, height, points, selected},
       mode
     }),
     set: (state, {mode, payload}) => {

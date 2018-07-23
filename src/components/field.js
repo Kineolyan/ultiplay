@@ -26,7 +26,7 @@ const updateState = (state, value) => {
 };
 
 const makePoint = point => h(
-  'circle.draggable',
+  'circle.draggable.player',
   {attrs: {
     cx: 150 + point.x,
     cy: 150 + point.y,
@@ -40,10 +40,15 @@ const makePoint = point => h(
 
 const Point = (sources) => {
   const state$ = sources.onion.state$;
+  const clicks$ = sources.DOM.select('.player').events('click');
+  const selectedId$ = xs.combine(state$, clicks$)
+    .map(([{id}]) => id);
+
   const vdom$ = state$.map(makePoint);
 
   return {
-    DOM: vdom$
+    DOM: vdom$,
+    selected: selectedId$
   };
 };
 
@@ -131,24 +136,27 @@ const Field = (sources) => {
       position.y -= 150;
       return position;
     });
+  const positionReducer$ = stateUpdate$.map(update => state => updateState(state, update));
 
-  const reducer$ = stateUpdate$.map(update => state => updateState(state, update));
+  const Points = makeCollection({
+    item: Point,
+    itemKey: (pointState, index) => pointState.id,
+    itemScope: key => key,
+    collectSinks: instances => ({
+      // onion: instances.pickMerge('onion'),
+      DOM: instances.pickCombine('DOM'),
+      selected: instances.pickMerge('selected')
+    })
+  });
+  const points = Points(sources);
+  const selectedReducer$ = points.selected
+    .map(id => state => Object.assign({}, state, {selected: id}));
 
-  // const Points = makeCollection({
-  //   item: Point,
-  //   itemKey: (pointState, index) => pointState.id,
-  //   itemScope: key => key,
-  //   collectSinks: instances => ({
-  //     // onion: instances.pickMerge('onion'),
-  //     DOM: instances.pickCombine('DOM')
-  //   })
-  // });
-  // const points = Points(sources);
+  // const reducer$ = xs.merge(positionReducer$, selectedReducer$);
+  const reducer$ = positionReducer$;
 
   let state$ = sources.onion.state$;
-  // const vdom$ = points.DOM.map(elements =>
-  const vdom$ = state$
-    .map(elements => elements.map(makePoint))
+  const vdom$ = points.DOM
     .map(elements =>
       div(
         '#field',
