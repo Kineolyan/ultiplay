@@ -1,6 +1,7 @@
 import xs from 'xstream';
 import {h, div} from '@cycle/dom';
 import {makeCollection} from 'cycle-onionify';
+import isolate from '@cycle/isolate';
 
 function getMousePosition(svg, evt) {
   var CTM = svg.getScreenCTM();
@@ -18,11 +19,12 @@ const createCombobject = (acc, v) => {
   }
 };
 
-const updateState = (state, value) => {
-  const idx = state.findIndex(v => v.id === value.id);
-  const copy = [...state];
+const updatePlayerState = (state, value) => {
+  const {points} = state;
+  const idx = points.findIndex(v => v.id === value.id);
+  const copy = [...points];
   copy[idx] = value;
-  return copy;
+  return Object.assign({}, state, {points: copy});
 };
 
 const makePoint = point => h(
@@ -50,6 +52,20 @@ const Point = (sources) => {
     DOM: vdom$,
     selected: selectedId$
   };
+};
+
+const Points = (sources) => {
+  const PointCollection = makeCollection({
+    item: Point,
+    itemKey: (pointState, index) => pointState.id,
+    itemScope: key => key,
+    collectSinks: instances => ({
+      // onion: instances.pickMerge('onion'),
+      DOM: instances.pickCombine('DOM'),
+      selected: instances.pickMerge('selected')
+    })
+  });
+  return PointCollection(sources);
 };
 
 const Field = (sources) => {
@@ -94,8 +110,6 @@ const Field = (sources) => {
           return 1; // New drag start, move the element
         } else if (acc > 0 && v < 0) {
           return -1; // Drag end, stop moving
-        // } else if (acc > 0 && v > 0) {
-        //   return 0;
         } else {
           return acc; // Don't change anything
         }
@@ -136,26 +150,15 @@ const Field = (sources) => {
       position.y -= 150;
       return position;
     });
-  const positionReducer$ = stateUpdate$.map(update => state => updateState(state, update));
+  const positionReducer$ = stateUpdate$.map(update => state => updatePlayerState(state, update));
 
-  const Points = makeCollection({
-    item: Point,
-    itemKey: (pointState, index) => pointState.id,
-    itemScope: key => key,
-    collectSinks: instances => ({
-      // onion: instances.pickMerge('onion'),
-      DOM: instances.pickCombine('DOM'),
-      selected: instances.pickMerge('selected')
-    })
-  });
-  const points = Points(sources);
+  const points = isolate(Points, 'points')(sources);
   const selectedReducer$ = points.selected
+    .debug('id')
     .map(id => state => Object.assign({}, state, {selected: id}));
 
-  // const reducer$ = xs.merge(positionReducer$, selectedReducer$);
-  const reducer$ = positionReducer$;
+  const reducer$ = xs.merge(positionReducer$, selectedReducer$);
 
-  let state$ = sources.onion.state$;
   const vdom$ = points.DOM
     .map(elements =>
       div(

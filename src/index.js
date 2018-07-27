@@ -27,7 +27,13 @@ const main = (sources) => {
     }).remember();
   const heightInc = HeightInc(
     Object.assign({}, sources, {props$: heightProps$}));
-  const field = isolate(Field, 'points')(sources);
+
+  const fieldLens = {
+    get: ({points, selected}) => ({points, selected}),
+    set: (state, childState) => Object.assign({}, state, childState)
+  };
+  const field = isolate(Field, {onion: fieldLens})(sources);
+
   const codecLens = {
     get: ({nbPlayers, height, points, mode, selected}) => ({
       payload: {nbPlayers, height, points, selected},
@@ -106,7 +112,7 @@ const main = (sources) => {
     DOM: vdom$,
     onion: reducer$,
   };
-}
+};
 
 Cycle.run(
   onionify(main),
