@@ -1,10 +1,11 @@
 import xs from 'xstream';
 
-const trigger = (source$, trigger$) => xs.create({
+const triggerOperator = (source$, trigger$) => xs.create({
 	start(listener) {
 		this.sourceListener = {
 			next: (value) => {
 				this.last = value;
+				this.isSet = true;
 			},
 			error: (e) => {
 				this.error = e;
@@ -12,11 +13,12 @@ const trigger = (source$, trigger$) => xs.create({
 		};
 		this.triggerListener = {
 			next: () => {
-				if (this.error === undefined) {
-					listener.next(this.last)
-				} else {
+				if (this.error !== undefined) {
 					listener.error(this.error);
 					this.stop();
+				} else if (this.isSet) {
+					this.isSet = false
+					listener.next(this.last);
 				}
 			},
 			error: (e) => {
@@ -34,12 +36,13 @@ const trigger = (source$, trigger$) => xs.create({
 		trigger$.removeListener(this.triggerListener);
 	},
 	error: undefined,
-	last: undefined
+	last: undefined,
+	isSet: false
 });
 
-const composableTrigger = trigger$ => source$ => trigger(source$, trigger$);
+const trigger = trigger$ => source$ => triggerOperator(source$, trigger$);
 
 export {
-	trigger,
-	composableTrigger
+	triggerOperator,
+	trigger
 };

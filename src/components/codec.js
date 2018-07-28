@@ -2,7 +2,7 @@ import xs from 'xstream';
 import debounce from 'xstream/extra/debounce';
 import {h, div, button, textarea, sub} from '@cycle/dom';
 
-import {composableTrigger as trigger} from '../operators/trigger.js';
+import {trigger} from '../operators/trigger.js';
 
 const renderMode = (state) => {
   switch (state.mode) {
