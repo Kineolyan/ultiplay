@@ -35,7 +35,7 @@ const makePoint = point => h(
     cy: 150 + point.y,
     r: 15,
     stroke: 'black',
-    strokeWidth: 1,
+    'stroke-width': point.selected ? 2 : 1,
     fill: point.color,
     draggable: 'true',
     cid: point.id
@@ -43,15 +43,10 @@ const makePoint = point => h(
 
 const Point = (sources) => {
   const state$ = sources.onion.state$;
-  const clicks$ = sources.DOM.select('.player').events('click');
-  const selectedId$ = xs.combine(state$, clicks$)
-    .map(([{id}]) => id);
-
   const vdom$ = state$.map(makePoint);
 
   return {
-    DOM: vdom$,
-    selected: selectedId$
+    DOM: vdom$
   };
 };
 
@@ -61,8 +56,7 @@ const Points = (sources) => {
     itemKey: (pointState, index) => pointState.id,
     itemScope: key => key,
     collectSinks: instances => ({
-      DOM: instances.pickCombine('DOM'),
-      selected: instances.pickMerge('selected')
+      DOM: instances.pickCombine('DOM')
     })
   });
   return PointCollection(sources);
@@ -187,7 +181,13 @@ const Field = (sources) => {
 
   // Resolve colors and points into a single array
   const pointsLens = {
-    get: ({points, colors}) => points.map(p => Object.assign({}, p, {color: colors[p.color]})),
+    get: ({points, colors, selected}) => points.map(p => Object.assign(
+      {},
+      p,
+      {
+        color: colors[p.color],
+        selected: p.id === selected
+      })),
     set: (state) => state // No change
   };
   const points = isolate(Points, {onion: pointsLens})(sources);
