@@ -3,7 +3,7 @@ import {h, div} from '@cycle/dom';
 import {makeCollection} from 'cycle-onionify';
 import isolate from '@cycle/isolate';
 
-import {trigger} from '../operators/trigger.js';
+import {trigger} from '../operators/trigger';
 
 function getMousePosition(svg, evt) {
 	var CTM = svg.getScreenCTM();

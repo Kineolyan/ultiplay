@@ -4,7 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "devDependencies": {
-    "parcel-bundler": "^1.9.3"
+    "parcel-bundler": "^1.9.3",
+    "typescript": "^2.9.2"
   },
   "dependencies": {
     "@cycle/dom": "^20.4.0",

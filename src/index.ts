@@ -6,10 +6,11 @@ import isolate from '@cycle/isolate';
 require('aframe');
 require("aframe-environment-component");
 
-import {IncDecButtons} from './components/buttons.js';
-import {Scene} from './components/3d-vision.js';
-import {Field} from './components/field.js';
-import Codec from './components/codec.js';
+import {IncDecButtons} from './components/buttons';
+import {Scene} from './components/3d-vision';
+import {Field} from './components/field';
+import Codec from './components/codec';
+
 
 const createPlayer = ({id, x, y, color}) => ({
   id: id,
