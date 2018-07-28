@@ -11,6 +11,12 @@ body {
   border: solid black 1px;
 }
 
+.color-block {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+}
+
 #codec textarea {
   width: 95vw;
   height: 250px;

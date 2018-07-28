@@ -12,6 +12,24 @@ import {Field} from './components/field.js';
 import Codec from './components/codec.js';
 
 const main = (sources) => {
+  const initialReducer$ = xs.of(() => ({
+    nbPlayers: 2,
+    height: 2,
+    colors: [
+      '1f77b4',
+      'ff7f0e',
+      '2ca02c',
+      'd62728',
+      '9467bd',
+      'bcbd22',
+      '17becf'
+    ],
+    points: [
+      {id: "p-a1", x: 0, y: 0},
+      {id: "p-a2", x: 0, y: 50}
+    ]
+  }));
+
   const PlayerInc = isolate(IncDecButtons, 'nbPlayers');
 	const playerIncProps$ = xs.of({
       text: 'Players',
@@ -29,8 +47,8 @@ const main = (sources) => {
     Object.assign({}, sources, {props$: heightProps$}));
 
   const fieldLens = {
-    get: ({points, selected}) => ({points, selected}),
-    set: (state, childState) => Object.assign({}, state, childState)
+    get: ({points, colors, selected}) => ({points, colors, selected}),
+    set: (state, {points, selected}) => Object.assign({}, state, {points, selected})
   };
   const field = isolate(Field, {onion: fieldLens})(sources);
 
@@ -56,15 +74,6 @@ const main = (sources) => {
     set: (state) => state
   };
   const scene = isolate(Scene, {onion: sceneLens})(sources);
-
-  const initialReducer$ = xs.of(() => ({
-    nbPlayers: 2,
-    height: 2,
-    points: [
-      {id: "p-a1", x: 0, y: 0},
-      {id: "p-a2", x: 0, y: 50}
-    ]
-  }));
 
   const addRemovePlayers$ = playerInc.increment
     .map(value => state => {

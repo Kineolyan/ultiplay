@@ -60,12 +60,44 @@ const Points = (sources) => {
     itemKey: (pointState, index) => pointState.id,
     itemScope: key => key,
     collectSinks: instances => ({
-      // onion: instances.pickMerge('onion'),
       DOM: instances.pickCombine('DOM'),
       selected: instances.pickMerge('selected')
     })
   });
   return PointCollection(sources);
+};
+
+const Colors = (sources) => {
+  const state$ = sources.onion.state$;
+  const clicks$ = sources.DOM.events('click')
+    .filter(e => e.srcElement.className === 'color-block')
+    .map(e => {
+      e.stopPropagation();
+      return parseInt(e.srcElement.dataset['colorIndex']);
+    });
+  clicks$.addListener({next: e => console.log('click', e)});
+
+  const vdom$ = state$.map(({colors, selected}) => {
+    if (selected) {
+      return div([
+          'Player color:',
+          ...colors.map((color, idx) => div(
+            '.color-block',
+            {attrs:
+              {
+                'data-color-index': idx,
+                style: `background-color: #${color};`
+              }
+            }))
+      ]);
+    } else {
+      return undefined;
+    }
+  });
+
+  return {
+    DOM: vdom$
+  };
 };
 
 const Field = (sources) => {
@@ -157,14 +189,21 @@ const Field = (sources) => {
     .debug('id')
     .map(id => state => Object.assign({}, state, {selected: id}));
 
+  const colorLens = {
+    get: ({colors, selected}) => ({colors, selected}),
+    set: (state) => state // No change yet
+  };
+  const colors = isolate(Colors, {onion: colorLens})(sources);
+
   const reducer$ = xs.merge(positionReducer$, selectedReducer$);
 
-  const vdom$ = points.DOM
-    .map(elements =>
+  const vdom$ = xs.combine(points.DOM, colors.DOM)
+    .map(([elements, colors]) =>
       div(
         '#field',
         [
           div('2D Field'),
+          colors,
           h(
             'svg',
             {attrs: {width: 300, height: 300}},
