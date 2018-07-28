@@ -11,6 +11,13 @@ import {Scene} from './components/3d-vision.js';
 import {Field} from './components/field.js';
 import Codec from './components/codec.js';
 
+const createPlayer = ({id, x, y, color}) => ({
+  id: id,
+  x: x || 0,
+  y: y || 0,
+  color: color || 0
+});
+
 const main = (sources) => {
   const initialReducer$ = xs.of(() => ({
     nbPlayers: 2,
@@ -25,8 +32,8 @@ const main = (sources) => {
       '17becf'
     ],
     points: [
-      {id: "p-a1", x: 0, y: 0},
-      {id: "p-a2", x: 0, y: 50}
+      createPlayer({id: "p-a1", x: 0, y: 0}),
+      createPlayer({id: "p-a2", x: 0, y: 50})
     ]
   }));
 
@@ -70,7 +77,7 @@ const main = (sources) => {
   };
   const codec = isolate(Codec, {onion: codecLens})(sources);
   const sceneLens = {
-    get: ({height, points}) => ({height, players: points}),
+    get: ({height, points, colors}) => ({height, players: points, colors}),
     set: (state) => state
   };
   const scene = isolate(Scene, {onion: sceneLens})(sources);
@@ -80,11 +87,9 @@ const main = (sources) => {
       const copy = [...state.points];
       if (value > 0) {
         // Add a new player
-        copy.push({
-          id: `p-a${copy.length + 1}`,
-          x: 0,
-          y: 0
-        });
+        copy.push(createPlayer({
+          id: `p-a${copy.length + 1}`
+        }));
       } else if (copy.length > 1) {
         // Remove the last player
         copy.pop();

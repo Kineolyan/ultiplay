@@ -35,7 +35,7 @@ const drawField = () => [
   horizontalLine(25)
 ];
 
-const cylinder = ({x, y}) => {
+const cylinder = ({x, y, color}, colors) => {
   return h(
     'a-cylinder',
     {
@@ -43,12 +43,12 @@ const cylinder = ({x, y}) => {
         position: `${(-x / 20).toFixed(2)} 0.9 ${(-y / 20).toFixed(2)}`,
         radius: '0.4',
         height: '1.8',
-        color: '#FFC65D'
+        color: `#${colors[color]}`
       }
     });
 };
 
-const renderScene = ({players, height}) => {
+const renderScene = ({players, height, colors}) => {
   return h(
     'a-scene',
     {
@@ -59,7 +59,7 @@ const renderScene = ({players, height}) => {
     },
     [
       ...drawField(),
-      ...players.map(cylinder),
+      ...players.map(p => cylinder(p, colors)),
       h(
         'a-entity',
         {

@@ -23,7 +23,7 @@ const updatePlayerState = (state, value) => {
   const {points} = state;
   const idx = points.findIndex(v => v.id === value.id);
   const copy = [...points];
-  copy[idx] = value;
+  copy[idx] = Object.assign(copy[idx], value);
   return Object.assign({}, state, {points: copy});
 };
 
