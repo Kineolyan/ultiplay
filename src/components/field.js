@@ -30,6 +30,7 @@ const updatePlayerState = (state, value) => {
 const makePoint = point => h(
   'circle.draggable.player',
   {attrs: {
+    'data-id': point.id,
     cx: 150 + point.x,
     cy: 150 + point.y,
     r: 15,
@@ -102,9 +103,9 @@ const Colors = (sources) => {
 
 const Field = (sources) => {
   const svg$ = sources.DOM.select('svg');
-  const startDrag$ = svg$.events('mousedown')
-    .filter(e => e.target.classList.contains('draggable'))
-    .map(e => {
+  const mouseDown$ = svg$.events('mousedown')
+    .filter(e => e.target.classList.contains('draggable'));
+  const startDrag$ = mouseDown$.map(e => {
       const svg = e.ownerTarget;
       const elt = e.target;
       const offset = getMousePosition(svg, e);
@@ -186,13 +187,12 @@ const Field = (sources) => {
 
   // Resolve colors and points into a single array
   const pointsLens = {
-    // get: ({points, colors}) => points.map(p => Object.assign({}, p, {color: colors[p.color]})),
-    get: ({points, colors}) => points,
+    get: ({points, colors}) => points.map(p => Object.assign({}, p, {color: colors[p.color]})),
     set: (state) => state // No change
   };
   const points = isolate(Points, {onion: pointsLens})(sources);
-  const selectedReducer$ = points.selected
-    .debug('id')
+  const selectedReducer$ = mouseDown$
+    .map(e => e.srcElement.dataset['id'])
     .map(id => state => Object.assign({}, state, {selected: id}));
 
   const colorLens = {
