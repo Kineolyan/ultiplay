@@ -1,4 +1,4 @@
-import xs from 'xstream';
+import xs, {Stream} from 'xstream';
 import {h, div} from '@cycle/dom';
 import {makeCollection} from 'cycle-onionify';
 import isolate from '@cycle/isolate';
@@ -21,7 +21,21 @@ const createCombobject = (acc, v) => {
 	}
 };
 
-const updatePlayerState = (state, value) => {
+type PointState = {
+	id: number | string,
+	x: number,
+	y: number,
+	color: number
+};
+type PointItemState = {
+	id: number | string,
+	x: number,
+	y: number,
+	color: string,
+	selected: boolean
+};
+
+const updatePlayerState = (state, value: PointState) => {
 	const {points} = state;
 	const idx = points.findIndex(v => v.id === value.id);
 	const copy = [...points];
@@ -55,7 +69,7 @@ const Point = (sources) => {
 const Points = (sources) => {
 	const PointCollection = makeCollection({
 		item: Point,
-		itemKey: (pointState, index) => pointState.id,
+		itemKey: (pointState: PointItemState, index) => pointState.id,
 		itemScope: key => key,
 		collectSinks: instances => ({
 			DOM: instances.pickCombine('DOM')
@@ -163,7 +177,7 @@ const Field = (sources) => {
 			})),
 		set: (state) => state // No change
 	};
-	const points = isolate(Points, {onion: pointsLens})(sources);
+	const points: {DOM: Stream<any[]>} = isolate(Points, {onion: pointsLens})(sources);
 	const selectedReducer$ = startDrag$
 		.map(e => e.srcElement.dataset['id'])
 		.map(id => state => Object.assign({}, state, {selected: id}));
