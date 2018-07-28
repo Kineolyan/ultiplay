@@ -69,13 +69,12 @@ const Points = (sources) => {
 
 const Colors = (sources) => {
   const state$ = sources.onion.state$;
-  const clicks$ = sources.DOM.events('click')
+  const selectedColor$ = sources.DOM.events('click')
     .filter(e => e.srcElement.className === 'color-block')
     .map(e => {
       e.stopPropagation();
       return parseInt(e.srcElement.dataset['colorIndex']);
     });
-  clicks$.addListener({next: e => console.log('click', e)});
 
   const vdom$ = state$.map(({colors, selected}) => {
     if (selected) {
@@ -96,7 +95,8 @@ const Colors = (sources) => {
   });
 
   return {
-    DOM: vdom$
+    DOM: vdom$,
+    color$: selectedColor$
   };
 };
 
@@ -191,11 +191,21 @@ const Field = (sources) => {
 
   const colorLens = {
     get: ({colors, selected}) => ({colors, selected}),
-    set: (state) => state // No change yet
+    set: (state) => state // No change
   };
   const colors = isolate(Colors, {onion: colorLens})(sources);
+  const colorReducer$ = colors.color$.map(idx => state => {
+    if (state.selected) {
+      const points = state.points.slice();
+      const selectedPoint = points.find(p => p.id === state.selected);
+      selectedPoint.color = idx;
+      return Object.assign({}, state, {points});
+    } else {
+      return state;
+    }
+  })
 
-  const reducer$ = xs.merge(positionReducer$, selectedReducer$);
+  const reducer$ = xs.merge(positionReducer$, selectedReducer$, colorReducer$);
 
   const vdom$ = xs.combine(points.DOM, colors.DOM)
     .map(([elements, colors]) =>
