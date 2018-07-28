@@ -23,13 +23,13 @@ const main = (sources) => {
     nbPlayers: 2,
     height: 2,
     colors: [
-      '1f77b4',
-      'ff7f0e',
-      '2ca02c',
-      'd62728',
-      '9467bd',
-      'bcbd22',
-      '17becf'
+      '#1f77b4',
+      '#ff7f0e',
+      '#2ca02c',
+      '#d62728',
+      '#9467bd',
+      '#ffd400',
+      '#17becf'
     ],
     points: [
       createPlayer({id: "p-a1", x: 0, y: 0}),
@@ -76,6 +76,7 @@ const main = (sources) => {
     }
   };
   const codec = isolate(Codec, {onion: codecLens})(sources);
+
   const sceneLens = {
     get: ({height, points, colors}) => ({height, players: points, colors}),
     set: (state) => state

@@ -43,7 +43,7 @@ const cylinder = ({x, y, color}, colors) => {
         position: `${(-x / 20).toFixed(2)} 0.9 ${(-y / 20).toFixed(2)}`,
         radius: '0.4',
         height: '1.8',
-        color: `#${colors[color]}`
+        color: colors[color]
       }
     });
 };

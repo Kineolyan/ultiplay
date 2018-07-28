@@ -35,7 +35,7 @@ const makePoint = point => h(
     r: 15,
     stroke: 'black',
     strokeWidth: 1,
-    fill: 'blue',
+    fill: point.color,
     draggable: 'true',
     cid: point.id
   }});
@@ -85,7 +85,7 @@ const Colors = (sources) => {
             {attrs:
               {
                 'data-color-index': idx,
-                style: `background-color: #${color};`
+                style: `background-color: ${color};`
               }
             }))
       ]);
@@ -184,7 +184,13 @@ const Field = (sources) => {
     });
   const positionReducer$ = stateUpdate$.map(update => state => updatePlayerState(state, update));
 
-  const points = isolate(Points, 'points')(sources);
+  // Resolve colors and points into a single array
+  const pointsLens = {
+    // get: ({points, colors}) => points.map(p => Object.assign({}, p, {color: colors[p.color]})),
+    get: ({points, colors}) => points,
+    set: (state) => state // No change
+  };
+  const points = isolate(Points, {onion: pointsLens})(sources);
   const selectedReducer$ = points.selected
     .debug('id')
     .map(id => state => Object.assign({}, state, {selected: id}));
