@@ -115,9 +115,11 @@ const onDraggable = (stream) => stream.filter(e => e.target.classList.contains('
 
 const Field = (sources) => {
 	const svg$ = sources.DOM.select('svg');
-	const startDrag$ = svg$.events('mousedown').compose(onDraggable);
+	const startDrag$ = svg$.events('mousedown')
+		.compose(onDraggable);
 	const onDrag$ = svg$.events('mousemove');
-	const endDrag$ = svg$.events('mouseup').compose(onDraggable);
+	const endDrag$ = svg$.events('mouseup')
+		.compose(onDraggable);
 
 	const basePosition$ = startDrag$.map(e => {
 		const svg = e.ownerTarget;
@@ -133,6 +135,9 @@ const Field = (sources) => {
 		const svg = e.ownerTarget;
 		return getMousePosition(svg, e);
 	});
+	// FIXME always force a listener for the svg position (to be able to use endWhen)
+	svgPosition$.addListener({});
+
 	const position$ = basePosition$
 		.map(({element, offset}) => {
 			const id = element.getAttributeNS(null, 'cid');
@@ -141,8 +146,8 @@ const Field = (sources) => {
 					id,
 					x: position.x - offset.x,
 					y: position.y - offset.y
-				}));
-				// .endWhen(endDrag$);
+				}))
+				.endWhen(endDrag$);
 		})
 		.flatten();
 

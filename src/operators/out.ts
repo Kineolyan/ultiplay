@@ -1,4 +1,6 @@
-const printStream = (stream, name = 'dbg') => {
+import {Stream} from 'xstream';
+
+const printStream = (stream: Stream<any>, name = 'dbg') => {
 	stream.addListener({
 		next: value => console.log('Value for', name, value),
 		complete: () => console.log('End of', name),
@@ -6,6 +8,12 @@ const printStream = (stream, name = 'dbg') => {
 	});
 };
 
+const composablePrint = (name = 'dbg') => (stream: Stream<any>) => {
+	printStream(stream, name);
+	return stream;
+};
+
 export {
-	printStream
+	printStream,
+	composablePrint
 };

@@ -10,24 +10,17 @@
   version "20.4.0"
   resolved "https://registry.yarnpkg.com/@cycle/dom/-/dom-20.4.0.tgz#a309ce7f4ac0df74b7b1876583ccc7349bf99a6a"
   dependencies:
-    "@cycle/run" "4.0.0"
+    "@cycle/run" "*"
     es6-map "^0.1.4"
     snabbdom "0.7.0"
     snabbdom-selector "^3.0.0"
-    xstream "11.x"
+    xstream "*"
 
 "@cycle/isolate@>=3", "@cycle/isolate@^3.3.0":
   version "3.3.0"
   resolved "https://registry.yarnpkg.com/@cycle/isolate/-/isolate-3.3.0.tgz#f23c9dfe0ac604240addf915693c4e78fef2fd28"
 
-"@cycle/run@*":
-  version "4.4.0"
-  resolved "https://registry.yarnpkg.com/@cycle/run/-/run-4.4.0.tgz#8013702548b1992f665b9f2f42882996871ccf8f"
-  dependencies:
-    quicktask "1.1.0"
-    xstream "10.x || 11.x"
-
-"@cycle/run@4.0.0":
+"@cycle/run@*", "@cycle/run@4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@cycle/run/-/run-4.0.0.tgz#d48c5133cd783afdf7f9e37ce1c158b570d6c5f1"
   dependencies:
