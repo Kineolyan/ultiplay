@@ -3,8 +3,8 @@ import Cycle from '@cycle/xstream-run';
 import {h, div, span, button, makeDOMDriver, i} from '@cycle/dom';
 import onionify from 'cycle-onionify';
 import isolate from '@cycle/isolate';
-require('aframe');
-require("aframe-environment-component");
+import 'aframe';
+import 'aframe-environment-component';
 
 import {IncDecButtons} from './components/buttons';
 import {Scene} from './components/3d-vision';
@@ -26,8 +26,8 @@ const main = (sources) => {
       '#17becf'
     ],
     points: [
-      createPlayer({id: "p-a1", x: 0, y: 0}),
-      createPlayer({id: "p-a2", x: 0, y: 50})
+      createPlayer({id: 1, x: 0, y: 0}),
+      createPlayer({id: 2, x: 0, y: 50})
     ]
   }));
 
@@ -84,8 +84,8 @@ const main = (sources) => {
     .map(([scene, heightInc, field, codec]) => div(
       [
         div('Small browser application to display Ultimate tactics in 3D'),
-        heightInc,
         field,
+        heightInc,
         scene,
         codec
       ]))

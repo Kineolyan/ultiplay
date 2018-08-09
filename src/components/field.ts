@@ -5,7 +5,7 @@ import isolate from '@cycle/isolate';
 
 import {trigger} from '../operators/trigger';
 import {printStream} from '../operators/out';
-import {createPlayer} from './players';
+import {createPlayer, generatePlayerId} from './players';
 
 function getMousePosition(svg, evt) {
 	var CTM = svg.getScreenCTM();
@@ -71,7 +71,7 @@ const Point = (sources) => {
 const Points = (sources) => {
 	const PointCollection = makeCollection({
 		item: Point,
-		itemKey: (pointState: PointItemState, index) => pointState.id,
+		itemKey: (point: PointItemState, index) => `${point.id}`,
 		itemScope: key => key,
 		collectSinks: instances => ({
 			DOM: instances.pickCombine('DOM')
@@ -150,8 +150,7 @@ const Field = (sources) => {
 	const newPlayerReducer$ = dblClick$.map(
 		position => state => {
 			const points = state.points.slice();
-			const idNb = state.points.length + 1;
-			const id =  `p-dbc${idNb}`;
+			const id =  generatePlayerId(points);
 			points.push(
 				createPlayer({...position, id}));
 			return {...state, points, selected: id};
@@ -176,7 +175,7 @@ const Field = (sources) => {
 
 	const position$ = basePosition$
 		.map(({element, offset}) => {
-			const id = element.getAttributeNS(null, 'cid');
+			const id = parseInt(element.getAttributeNS(null, 'cid'));
 			return svgPosition$
 				.map(position => ({
 					id,
@@ -215,7 +214,7 @@ const Field = (sources) => {
 	};
 	const points: {DOM: Stream<any[]>} = isolate(Points, {onion: pointsLens})(sources);
 	const selectedReducer$ = startDrag$
-		.map(e => e.srcElement.dataset['id'])
+		.map(e => parseInt(e.srcElement.dataset['id']))
 		.map(id => state => Object.assign({}, state, {selected: id}));
 
 	const colorLens = {

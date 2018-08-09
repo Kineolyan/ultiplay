@@ -1,11 +1,17 @@
+type PlayerId = number;
 type Player = {
-  id: string, 
+  id: PlayerId, 
   x: number, 
   y: number, 
   color: number
 };
 
-function createPlayer({id, x, y, color}: {id: string, x?: number, y?: number, color?: number}): Player {
+function generatePlayerId(players: Player[]): PlayerId {
+  const max = players.reduce((m, p) => Math.max(m, p.id), 0);
+  return max + 1;
+}
+
+function createPlayer({id, x, y, color}: {id: PlayerId, x?: number, y?: number, color?: number}): Player {
   return {
     id: id,
     x: x || 0,
@@ -15,6 +21,8 @@ function createPlayer({id, x, y, color}: {id: string, x?: number, y?: number, co
 }
 
 export {
+  PlayerId,
   Player,
+  generatePlayerId,
   createPlayer
 };
