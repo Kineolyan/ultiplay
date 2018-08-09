@@ -1,5 +1,5 @@
 import xs, {Stream} from 'xstream';
-import {h, div} from '@cycle/dom';
+import {h, div, button} from '@cycle/dom';
 import {makeCollection} from 'cycle-onionify';
 import isolate from '@cycle/isolate';
 
@@ -80,34 +80,45 @@ const Points = (sources) => {
 
 const Colors = (sources) => {
 	const state$ = sources.onion.state$;
-	const selectedColor$ = sources.DOM.events('click')
-		.filter(e => e.srcElement.className === 'color-block')
+	const selectedColor$ = sources.DOM
+		.select('.color-block')
+		.events('click')
 		.map(e => {
 			e.stopPropagation();
 			return parseInt(e.srcElement.dataset['colorIndex']);
 		});
 
-	const vdom$ = state$.map(({colors, selected}) => {
-		if (selected) {
-			return div([
-					'Player color:',
-					...colors.map((color, idx) => div(
-						'.color-block',
-						{attrs:
-							{
-								'data-color-index': idx,
-								style: `background-color: ${color};`
-							}
-						}))
-			]);
-		} else {
-			return undefined;
-		}
+	const vdom$ = state$.map(({colors}) => {
+		return div([
+				'Player color:',
+				...colors.map((color, idx) => div(
+					'.color-block',
+					{attrs:
+						{
+							'data-color-index': idx,
+							style: `background-color: ${color};`
+						}
+					}))
+		]);
 	});
 
 	return {
 		DOM: vdom$,
 		color$: selectedColor$
+	};
+};
+
+const DeletePlayer = (sources) => {
+	const click$ = sources.DOM
+		.select('.button')
+		.events('click');
+
+	const vdom$ = xs.of(button('.button', 'Delete player'))
+		.remember();
+
+	return {
+		DOM: vdom$,
+		click$
 	};
 };
 
@@ -188,7 +199,7 @@ const Field = (sources) => {
 		.map(id => state => Object.assign({}, state, {selected: id}));
 
 	const colorLens = {
-		get: ({colors, selected}) => ({colors, selected}),
+		get: ({colors}) => ({colors}),
 		set: (state) => state // No change
 	};
 	const colors = isolate(Colors, {onion: colorLens})(sources);
@@ -201,13 +212,30 @@ const Field = (sources) => {
 		} else {
 			return state;
 		}
-	})
+	});
 
-	const reducer$ = xs.merge(positionReducer$, selectedReducer$, colorReducer$);
+	const deletePlayer = isolate(DeletePlayer)(sources);
+	const deletePlayerReducer$ = deletePlayer.click$.map(
+		() => state => {
+			// Remove selected from the list
+			const points: any[] = state.points.slice();
+			const idx = points.findIndex(p => p.id === state.selected);
+			if (idx >= 0) {
+				points.splice(idx, 1);
+			}
+			return {...state, points, selected: null};
+		});
 
-	const vdom$ = xs.combine(points.DOM, colors.DOM, pointMove$.startWith(null))
-		.map(([elements, colors]) =>
-			div(
+	const reducer$ = xs.merge(positionReducer$, selectedReducer$, colorReducer$, deletePlayerReducer$);
+
+	const state$ = sources.onion.state$;
+	const vdom$ = xs.combine(state$, points.DOM, colors.DOM, deletePlayer.DOM, pointMove$.startWith(null))
+		.map(([{selected}, elements, colors, deletePlayer]) => {
+			const elementsOnSelected = selected
+				? [colors, deletePlayer]
+				: [];
+		
+			return div(
 				'#field',
 				[
 					div('2D Field'),
@@ -215,8 +243,9 @@ const Field = (sources) => {
 						'svg',
 						{attrs: {width: 300, height: 300}},
 						elements),
-					colors
-				]))
+					...elementsOnSelected
+				]);
+		})
 		.remember();
 
 	return {
