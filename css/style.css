@@ -22,7 +22,7 @@ body {
   height: 250px;
 }
 
-.player.draggable {
+.draggable {
   cursor: pointer;
 }
 

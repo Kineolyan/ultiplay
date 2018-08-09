@@ -135,7 +135,8 @@ const normalizePosition = (position) => {
 const Field = (sources) => {
 	const svg$ = sources.DOM.select('svg');
 	const startDrag$ = svg$.events('mousedown')
-		.compose(onDraggable);
+		.compose(onDraggable)
+		.debug('start drag');
 	const onDrag$ = svg$.events('mousemove');
 	const endDrag$ = svg$.events('mouseup')
 		.compose(onDraggable);
@@ -254,7 +255,7 @@ const Field = (sources) => {
 
 	const state$ = sources.onion.state$;
 	const vdom$ = xs.combine(state$, points.DOM, colors.DOM, deletePlayer.DOM, pointMove$.startWith(null))
-		.map(([{selected}, elements, colors, deletePlayer]) => {
+		.map(([{selected}, points, colors, deletePlayer]) => {
 			const elementsOnSelected = selected
 				? [colors, deletePlayer]
 				: [];
@@ -266,7 +267,22 @@ const Field = (sources) => {
 					h(
 						'svg',
 						{attrs: {width: 300, height: 300}},
-						elements),
+						[
+							...points,
+							h(
+								'polygon.draggable',
+								{
+									attrs: {
+										points: 
+											[
+												150, 150,
+												140, 175,
+												160, 175
+											].join(','),
+										fill: 'grey'
+									}
+								})
+						]),
 					...elementsOnSelected
 				]);
 		})
