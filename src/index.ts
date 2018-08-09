@@ -10,14 +10,7 @@ import {IncDecButtons} from './components/buttons';
 import {Scene} from './components/3d-vision';
 import {Field} from './components/field';
 import Codec from './components/codec';
-
-
-const createPlayer = ({id, x, y, color}) => ({
-  id: id,
-  x: x || 0,
-  y: y || 0,
-  color: color || 0
-});
+import {createPlayer} from './components/players';
 
 const main = (sources) => {
   const initialReducer$ = xs.of(() => ({
@@ -38,14 +31,6 @@ const main = (sources) => {
     ]
   }));
 
-  const PlayerInc = isolate(IncDecButtons, 'nbPlayers');
-	const playerIncProps$ = xs.of({
-      text: 'Players',
-      min: 1
-    })
-    .remember();
-	const playerInc = PlayerInc(
-    Object.assign({}, sources, {props$: playerIncProps$}));
   const HeightInc = isolate(IncDecButtons, 'height');
   const heightProps$ = xs.of({
       text: 'Height',
@@ -83,40 +68,22 @@ const main = (sources) => {
     set: (state) => state
   };
   const scene = isolate(Scene, {onion: sceneLens})(sources);
-
-  const addRemovePlayers$ = playerInc.increment
-    .map(value => state => {
-      const copy = [...state.points];
-      if (value > 0) {
-        // Add a new player
-        copy.push(createPlayer({
-          id: `p-a${copy.length + 1}`
-        }));
-      } else if (copy.length > 1) {
-        // Remove the last player
-        copy.pop();
-      }
-      return Object.assign({}, state, {points: copy});
-    });
+  
   const reducer$ = xs.merge(
     initialReducer$,
-    playerInc.onion,
     heightInc.onion,
     field.onion,
-    addRemovePlayers$,
     codec.onion);
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
       scene.DOM,
-      playerInc.DOM,
       heightInc.DOM,
       field.DOM,
       codec.DOM)
-    .map(([scene, playerInc, heightInc, field, codec]) => div(
+    .map(([scene, heightInc, field, codec]) => div(
       [
         div('Small browser application to display Ultimate tactics in 3D'),
-        playerInc,
         heightInc,
         field,
         scene,

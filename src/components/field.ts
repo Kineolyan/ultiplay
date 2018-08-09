@@ -4,6 +4,8 @@ import {makeCollection} from 'cycle-onionify';
 import isolate from '@cycle/isolate';
 
 import {trigger} from '../operators/trigger';
+import {printStream} from '../operators/out';
+import {createPlayer} from './players';
 
 function getMousePosition(svg, evt) {
 	var CTM = svg.getScreenCTM();
@@ -124,6 +126,12 @@ const DeletePlayer = (sources) => {
 
 const onDraggable = (stream) => stream.filter(e => e.target.classList.contains('draggable'));
 
+const normalizePosition = (position) => {
+	position.x -= 150;
+	position.y -= 150;
+	return position;
+};
+
 const Field = (sources) => {
 	const svg$ = sources.DOM.select('svg');
 	const startDrag$ = svg$.events('mousedown')
@@ -131,6 +139,23 @@ const Field = (sources) => {
 	const onDrag$ = svg$.events('mousemove');
 	const endDrag$ = svg$.events('mouseup')
 		.compose(onDraggable);
+	const dblClick$ = svg$.events('dblclick')
+		.map(e => {
+			e.preventDefault();
+			return normalizePosition({
+				x: e.offsetX,
+				y: e.offsetY
+			});
+		});
+	const newPlayerReducer$ = dblClick$.map(
+		position => state => {
+			const points = state.points.slice();
+			const idNb = state.points.length + 1;
+			const id =  `p-dbc${idNb}`;
+			points.push(
+				createPlayer({...position, id}));
+			return {...state, points, selected: id};
+		});
 
 	const basePosition$ = startDrag$.map(e => {
 		const svg = e.ownerTarget;
@@ -174,12 +199,7 @@ const Field = (sources) => {
 		})
 		.flatten();
 	const stateUpdate$ = position$.compose(trigger(endDrag$))
-		.map((point) => {
-			point.x -= 150;
-			point.y -= 150;
-
-			return point;
-		});
+		.map((point) => normalizePosition(point));
 	const positionReducer$ = stateUpdate$.map(update => state => updatePlayerState(state, update));
 
 	// Resolve colors and points into a single array
@@ -218,7 +238,7 @@ const Field = (sources) => {
 	const deletePlayerReducer$ = deletePlayer.click$.map(
 		() => state => {
 			// Remove selected from the list
-			const points: any[] = state.points.slice();
+			const points = state.points.slice();
 			const idx = points.findIndex(p => p.id === state.selected);
 			if (idx >= 0) {
 				points.splice(idx, 1);
@@ -226,7 +246,11 @@ const Field = (sources) => {
 			return {...state, points, selected: null};
 		});
 
-	const reducer$ = xs.merge(positionReducer$, selectedReducer$, colorReducer$, deletePlayerReducer$);
+	const reducer$ = xs.merge(
+		positionReducer$, 
+		selectedReducer$, 
+		colorReducer$, 
+		newPlayerReducer$, deletePlayerReducer$);
 
 	const state$ = sources.onion.state$;
 	const vdom$ = xs.combine(state$, points.DOM, colors.DOM, deletePlayer.DOM, pointMove$.startWith(null))
