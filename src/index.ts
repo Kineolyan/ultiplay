@@ -143,12 +143,11 @@ const main = (sources) => {
       ].map(t => {
         const attrs = {
           'data-id': t,
-          class: 'tab'
+          class: 'tab',
+          style: tab === t ? 'font-weight: bold' : ''
         };
         const name = getTabName(t);
-        return tab === t
-          ? h('li', {attrs}, [h('b', name)])
-          : h('li', {attrs}, name);
+        return h('li', {attrs}, name);
       });
 
       return div(
