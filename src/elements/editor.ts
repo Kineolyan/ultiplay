@@ -31,8 +31,8 @@ function Editor(sources: Sources): Sinks {
 
   const vdom$ = props$.map(({value, submitLabel}) =>
     div([
-      textarea(value),
-      button('.submit', submitLabel || 'Submit')
+      div(textarea(value)),
+      div(button('.submit', submitLabel || 'Submit'))
     ]));
 
 	return {

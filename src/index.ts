@@ -11,6 +11,7 @@ import {Scene} from './components/3d-vision';
 import {Field} from './components/field';
 import Codec from './components/codec';
 import {createPlayer} from './components/players';
+import Description from './components/description';
 
 enum Tab {
   FIELD,
@@ -31,8 +32,9 @@ function getTabName(tab: Tab): string {
 
 const main = (sources) => {
   const initialReducer$ = xs.of(() => ({
-    tab: Tab.CODEC,
+    tab: Tab.FIELD,
     mode: null,
+    editDescription: false,
     colors: [
       '#1f77b4',
       '#ff7f0e',
@@ -42,7 +44,7 @@ const main = (sources) => {
       '#ffd400',
       '#17becf'
     ],
-    description: '',
+    description: '<tactic description here>',
     points: [
       createPlayer({id: 1, x: 0, y: 0}),
       createPlayer({id: 2, x: 0, y: 50})
@@ -65,8 +67,8 @@ const main = (sources) => {
   const field = isolate(Field, {onion: fieldLens})(sources);
 
   const codecLens = {
-    get: ({height, points, mode, selected}) => ({
-      payload: {height, points, selected},
+    get: ({description, height, points, mode, selected}) => ({
+      payload: {height, points, selected, description},
       mode
     }),
     set: (state, {mode, payload}) => {
@@ -88,6 +90,12 @@ const main = (sources) => {
   };
   const scene = isolate(Scene, {onion: sceneLens})(sources);
 
+  const descriptionLens = {
+    get: ({description: value, editDescription: edit}) => ({value, edit}),
+    set: (state, {value: description, edit: editDescription}) => ({...state, description, editDescription})
+  };
+  const description = isolate(Description, {onion: descriptionLens})(sources);
+
   const tabClick$ = sources.DOM.select('.tab').events('click')
     .map(e => parseInt(e.srcElement.dataset['id']) as Tab);
   const tabReducer$ = tabClick$.map(tab => state => ({...state, tab}));
@@ -97,6 +105,7 @@ const main = (sources) => {
     heightInc.onion,
     field.onion,
     codec.onion,
+    description.onion,
     tabReducer$);
 
   const state$ = sources.onion.state$;
@@ -105,8 +114,9 @@ const main = (sources) => {
       scene.DOM,
       heightInc.DOM,
       field.DOM,
-      codec.DOM)
-    .map(([{tab}, scene, heightInc, field, codec]) => {
+      codec.DOM,
+      description.DOM)
+    .map(([{tab}, scene, heightInc, field, codec, description]) => {
       const tabElements = [];
       switch (tab) {
         case Tab.FIELD:
@@ -145,6 +155,7 @@ const main = (sources) => {
       [
         div('Small browser application to display Ultimate tactics in 3D'),
         h('ul', tabs),
+        description,
         ...tabElements
       ]);
     })
