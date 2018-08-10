@@ -3,8 +3,10 @@ import debounce from 'xstream/extra/debounce';
 import {h, div, button, textarea, sub} from '@cycle/dom';
 
 import {trigger} from '../operators/trigger';
+import Editor from '../elements/editor';
+import isolate from '@cycle/isolate';
 
-const renderMode = (state) => {
+const renderMode = (state, editor) => {
   switch (state.mode) {
     case 'export': return div([
       h(
@@ -12,11 +14,9 @@ const renderMode = (state) => {
         JSON.stringify(state.payload, null, 2)),
       button('.close', 'Close')
     ]);
-    case 'import': return div([
-      textarea(''),
-      button('.submit', 'Submit')
-    ]);
-    default: return undefined;
+    case 'import': return editor;
+    case null: return undefined;
+    default: return div(`Unknown mode ${state.mode}`);
   }
 };
 
@@ -27,12 +27,19 @@ const CoDec = (sources) => {
   const import$ = sources.DOM.select('.import')
     .events('click')
     .mapTo('import');
-  const submit$ = sources.DOM.select('.submit').events('click');
   const close$ = sources.DOM.select('.close').events('click');
-  const value$ = sources.DOM.select('#codec').events('input')
-    .filter(e => e.srcElement.type === 'textarea')
-    .compose(debounce(250))
-    .map(e => e.srcElement.value)
+
+  const editor = isolate(Editor)({
+    DOM: sources.DOM,
+    props$: xs.of({value: ''})
+  });
+  const mode$ = xs.merge(
+    export$,
+    import$,
+    xs.merge(editor.value$, close$).mapTo(null));
+
+  const modeProducer$ = mode$.map(mode => ({mode}));
+  const valueProducer$ = editor.value$
     .map(value => {
       try {
         return JSON.parse(value);
@@ -40,30 +47,23 @@ const CoDec = (sources) => {
         return null;
       }
     })
-    .startWith(undefined)
-    .compose(trigger(submit$));
-  const mode$ = xs.merge(
-    export$,
-    import$,
-    xs.merge(submit$, close$).mapTo(null));
-
-  const reducer$ = xs.merge(
-      mode$.map(mode => ({mode})),
-      value$.map(value => ({payload: value})))
-    .map(state => prev => state);
+    .map(payload => ({payload}));
+  const reducer$ = xs.merge(modeProducer$, valueProducer$)
+    .map(value => state => Object.assign({}, state, value));
 
   const state$ = sources.onion.state$;
-  const vdom$ = state$.map(state =>
-    div(
-      '#codec',
-      [
-        div([
-          button('.import', 'Import'),
-          button('.export', 'Export')
-        ]),
-        renderMode(state)
-      ]
-    ));
+  const vdom$ = xs.combine(state$, editor.DOM)
+    .map(([state, editor]) =>
+      div(
+        '#codec',
+        [
+          div([
+            button('.import', 'Import'),
+            button('.export', 'Export')
+          ]),
+          renderMode(state, editor)
+        ]
+      ));
 
 	return {
     DOM: vdom$,

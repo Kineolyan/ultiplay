@@ -53,9 +53,12 @@ class TriggerOperator<T> implements Producer<T> {
 	}
 }
 
-const triggerOperator = (source$, trigger$) => xs.create(new TriggerOperator(source$, trigger$));
+function triggerOperator<T>(source$: Stream<T>, trigger$: Stream<any>): Stream<T> {
+	return xs.create(new TriggerOperator(source$, trigger$));
+}
 
-const trigger = trigger$ => source$ => triggerOperator(source$, trigger$);
+const trigger: <T>(trigger$: Stream<any>) => (ins: Stream<T>) => Stream<T> =
+	trigger$ => source$ => triggerOperator(source$, trigger$);
 
 export {
 	triggerOperator,

@@ -31,8 +31,8 @@ function getTabName(tab: Tab): string {
 
 const main = (sources) => {
   const initialReducer$ = xs.of(() => ({
-    height: 2,
-    tab: Tab.COMBO,
+    tab: Tab.CODEC,
+    mode: null,
     colors: [
       '#1f77b4',
       '#ff7f0e',
@@ -42,11 +42,12 @@ const main = (sources) => {
       '#ffd400',
       '#17becf'
     ],
+    description: '',
     points: [
       createPlayer({id: 1, x: 0, y: 0}),
       createPlayer({id: 2, x: 0, y: 50})
     ],
-    mode: null
+    height: 2
   }));
 
   const HeightInc = isolate(IncDecButtons, 'height');
