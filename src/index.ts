@@ -1,37 +1,57 @@
-import xs from 'xstream';
+import xs, {Stream} from 'xstream';
 import Cycle from '@cycle/xstream-run';
-import {h, div, span, button, makeDOMDriver, i, table} from '@cycle/dom';
+import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
 import onionify from 'cycle-onionify';
 import isolate from '@cycle/isolate';
 import 'aframe';
 import 'aframe-environment-component';
 
-import {IncDecButtons} from './components/buttons';
-import {Scene} from './components/3d-vision';
-import {Field} from './components/field';
+import {Tab, getTabName} from './components/tab';
 import Codec from './components/codec';
-import {createPlayer} from './components/players';
-import Description from './components/description';
+import {Player, createPlayer, PlayerId} from './components/players';
+import Scenario, {State as ScenarioState} from './components/scenario';
 
-enum Tab {
-  FIELD,
-  VISION,
-  COMBO,
-  CODEC
+type Tactic = {
+  description: string,
+  height: number,
+  points: Player[]
+};
+type State = {
+  // Constants
+  colors: string[],
+  // Transient
+  tab: Tab,
+  mode: string | null,
+  editDescription: boolean,
+  selected?: PlayerId,
+  tacticIdx: number,
+  // Tactics
+  tactics: Tactic[]
 };
 
-function getTabName(tab: Tab): string {
-  switch (tab) {
-  case Tab.FIELD: return 'Field';
-  case Tab.VISION: return '3D vision';
-  case Tab.COMBO: return 'Combo view';
-  case Tab.CODEC: return 'Import/Export';
-  default: throw new Error(`Unsported enum value ${tab}`);
+type Sources = {
+  DOM: DOMSource,
+  onion: {
+    state$: Stream<State>
   }
-}
+};
+type Sinks = {
+  DOM: Stream<VNode>,
+  onion: Stream<(State) => State>
+};
 
-const main = (sources) => {
-  const initialReducer$ = xs.of(() => ({
+const getTactic: (s: State) => Tactic = (state) => state.tactics[state.tacticIdx];
+
+const updateTactics: (s: State, t: Tactic) => State = (state, t) => {
+  const tactics = state.tactics.slice();
+  tactics[state.tacticIdx] = t;
+  state.tactics = tactics;
+
+  return state;
+};
+
+function main(sources: Sources): Sinks {
+  const initialReducer$: Stream<() => State> = xs.of(() => ({
     tab: Tab.FIELD,
     mode: null,
     editDescription: false,
@@ -44,35 +64,35 @@ const main = (sources) => {
       '#ffd400',
       '#17becf'
     ],
-    description: '<tactic description here>',
-    points: [
-      createPlayer({id: 1, x: 0, y: 0}),
-      createPlayer({id: 2, x: 0, y: 50})
-    ],
-    height: 2
+    tacticIdx: 1,
+    tactics: [
+      {
+        description: '<tactic description here>',
+        points: [
+          createPlayer({id: 1, x: 0, y: 0}),
+          createPlayer({id: 2, x: 0, y: 50})
+        ],
+        height: 2
+      },
+      {
+        description: 'Second tactics',
+        points: [
+          createPlayer({id: 1, x: 0, y: 0}),
+          createPlayer({id: 2, x: 0, y: 50}),
+          createPlayer({id: 3, x: 0, y: -50})
+        ],
+        height: 3.5
+      }
+    ]
   }));
 
-  const HeightInc = isolate(IncDecButtons, 'height');
-  const heightProps$ = xs.of({
-      text: 'Height',
-      increment: 0.25
-    }).remember();
-  const heightInc = HeightInc(
-    Object.assign({}, sources, {props$: heightProps$}));
-
-  const fieldLens = {
-    get: ({points, colors, selected}) => ({points, colors, selected}),
-    set: (state, {points, selected}) => Object.assign({}, state, {points, selected})
-  };
-  const field = isolate(Field, {onion: fieldLens})(sources);
-
   const codecLens = {
-    get: ({description, height, points, mode, selected}) => ({
-      payload: {height, points, selected, description},
+    get: ({tactics, selected, mode}) => ({
+      payload: {selected, tactics},
       mode
     }),
     set: (state, {mode, payload}) => {
-      const newState = Object.assign({}, state);
+      const newState = {...state};
       if (payload !== undefined) {
         Object.assign(newState, payload);
       }
@@ -84,49 +104,46 @@ const main = (sources) => {
   };
   const codec = isolate(Codec, {onion: codecLens})(sources);
 
-  const sceneLens = {
-    get: ({height, points, colors}) => ({height, players: points, colors}),
-    set: (state) => state
-  };
-  const scene = isolate(Scene, {onion: sceneLens})(sources);
-
-  const descriptionLens = {
-    get: ({description: value, editDescription: edit}) => ({value, edit}),
-    set: (state, {value: description, edit: editDescription}) => ({...state, description, editDescription})
-  };
-  const description = isolate(Description, {onion: descriptionLens})(sources);
-
   const tabClick$ = sources.DOM.select('.tab').events('click')
     .map(e => parseInt(e.srcElement.dataset['id']) as Tab);
   const tabReducer$ = tabClick$.map(tab => state => ({...state, tab}));
+
+  const scenarioLens = {
+    get(state: State): ScenarioState {
+      const {colors, tab, editDescription, selected} = state;
+      const {points, height, description} = getTactic(state);
+      return {colors, tab, selected, editDescription, points, height, description};
+    },
+    set(state: State, childState: ScenarioState): State {
+      const {points, height, description, editDescription, selected} = childState;
+      const newState = {
+        ...state,
+        editDescription,
+        selected
+      };
+      return updateTactics(newState, {points, height, description});
+    }
+  };
+  const scenario = isolate(Scenario, {onion: scenarioLens})(sources);
   
   const reducer$ = xs.merge(
     initialReducer$,
-    heightInc.onion,
-    field.onion,
+    scenario.onion,
     codec.onion,
-    description.onion,
     tabReducer$);
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
       state$,
-      scene.DOM,
-      heightInc.DOM,
-      field.DOM,
-      codec.DOM,
-      description.DOM)
-    .map(([{tab}, scene, heightInc, field, codec, description]) => {
+      scenario.DOM,
+      codec.DOM)
+    .map(([{tab}, scenario, codec]) => {
       const tabElements = [];
       switch (tab) {
         case Tab.FIELD:
-          tabElements.push(field);
-          break;
         case Tab.VISION:
-          tabElements.push(heightInc, scene);
-          break;
         case Tab.COMBO:
-          tabElements.push(field, heightInc, scene);
+          tabElements.push(scenario);
           break;
         case Tab.CODEC:
           tabElements.push(codec);
@@ -154,7 +171,6 @@ const main = (sources) => {
       [
         div('Small browser application to display Ultimate tactics in 3D'),
         h('ul', tabs),
-        description,
         ...tabElements
       ]);
     })
@@ -169,20 +185,3 @@ const main = (sources) => {
 Cycle.run(
   onionify(main),
   {DOM: makeDOMDriver('#app')});
-
-// var a = xs.periodic(1000)
-//   .filter(i => i % 2 === 0)
-//   .map(i => i * i)
-//   .debug('a')
-//   .take(10);
-// var b = xs.periodic(750)
-//     .fold((acc, c) => acc + c, 0)
-//     .debug('b')
-//     .take(15);
-// const c = xs.merge(a, b);
-
-// c.addListener({
-//   next: i => console.log(i),
-//   error: err => console.error(err),
-//   complete: () => console.log('completed'),
-// })
