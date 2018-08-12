@@ -10,6 +10,7 @@ import {Tab, getTabName} from './components/tab';
 import Codec from './components/codec';
 import {Player, createPlayer, PlayerId} from './components/players';
 import Scenario, {State as ScenarioState} from './components/scenario';
+import Pagination, {State as PaginationState} from './components/pagination';
 
 type Tactic = {
   description: string,
@@ -51,7 +52,7 @@ const updateTactics: (s: State, t: Tactic) => State = (state, t) => {
 };
 
 function main(sources: Sources): Sinks {
-  const initialReducer$: Stream<() => State> = xs.of(() => ({
+  const initialReducer$: Stream<(State) => State> = xs.of(() => ({
     tab: Tab.FIELD,
     mode: null,
     editDescription: false,
@@ -125,19 +126,34 @@ function main(sources: Sources): Sinks {
     }
   };
   const scenario = isolate(Scenario, {onion: scenarioLens})(sources);
+
+  const paginationLens = {
+    get({tacticIdx, tactics}: State): PaginationState {
+      return {
+        current: tacticIdx + 1, 
+        pages: tactics.length
+      };
+    },
+    set(state: State, {current}: PaginationState): State {
+      return {...state, tacticIdx: current - 1};
+    }
+  };
+  const pagination = isolate(Pagination, {onion: paginationLens})(sources);
   
   const reducer$ = xs.merge(
     initialReducer$,
     scenario.onion,
     codec.onion,
+    pagination.onion,
     tabReducer$);
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
       state$,
       scenario.DOM,
-      codec.DOM)
-    .map(([{tab}, scenario, codec]) => {
+      codec.DOM,
+      pagination.DOM)
+    .map(([{tab}, scenario, codec, pagination]) => {
       const tabElements = [];
       switch (tab) {
         case Tab.FIELD:
@@ -171,6 +187,7 @@ function main(sources: Sources): Sinks {
       [
         div('Small browser application to display Ultimate tactics in 3D'),
         h('ul', tabs),
+        pagination,
         ...tabElements
       ]);
     })
