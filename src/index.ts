@@ -128,14 +128,14 @@ function main(sources: Sources): Sinks {
   const scenario = isolate(Scenario, {onion: scenarioLens})(sources);
 
   const paginationLens = {
-    get({tacticIdx, tactics}: State): PaginationState {
+    get({tacticIdx, tactics}: State): PaginationState<Tactic> {
       return {
         current: tacticIdx + 1, 
-        pages: tactics.length
+        pages: tactics
       };
     },
-    set(state: State, {current}: PaginationState): State {
-      return {...state, tacticIdx: current - 1};
+    set(state: State, {current, pages}: PaginationState<Tactic>): State {
+      return {...state, tacticIdx: current - 1, tactics: pages};
     }
   };
   const pagination = isolate(Pagination, {onion: paginationLens})(sources);
@@ -159,7 +159,7 @@ function main(sources: Sources): Sinks {
         case Tab.FIELD:
         case Tab.VISION:
         case Tab.COMBO:
-          tabElements.push(scenario);
+          tabElements.push(pagination, scenario);
           break;
         case Tab.CODEC:
           tabElements.push(codec);
@@ -187,7 +187,6 @@ function main(sources: Sources): Sinks {
       [
         div('Small browser application to display Ultimate tactics in 3D'),
         h('ul', tabs),
-        pagination,
         ...tabElements
       ]);
     })
