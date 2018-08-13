@@ -38,13 +38,20 @@ function moveItem<T>(elements: T[], from: number, to: number): T[] {
 const moveBefore = (elements, current) => moveItem(elements, current, current - 1);
 const moveAfter = (elements, current) => moveItem(elements, current, current + 1);
 
+const disabledAttrs = (disable: boolean) => 
+  disable
+    ? {attrs: {disabled: ''}}
+    : {};
+
 function Pagination<T>(sources: Sources<T>): Sinks<T> {
   const {state$} = sources.onion;
 
-  const next$ = sources.DOM.select('.next').events('click');
-  const prev$ = sources.DOM.select('.prev').events('click');
-  const movePrev$ = sources.DOM.select('.move-prev').events('click');
-  const moveNext$ = sources.DOM.select('.move-next').events('click');
+  const clicks$ = (selector: string) => sources.DOM.select(selector).events('click');
+  const next$ = clicks$('.next');
+  const prev$ = clicks$('.prev');
+  const movePrev$ = clicks$('.move-prev');
+  const moveNext$ = clicks$('.move-next');
+  const delete$ = clicks$('.delete');
 
   // TODO find a smart way to debounce the clicks
   // The reducer still shoud apply to the state, not to suffer from concurrency
@@ -52,41 +59,48 @@ function Pagination<T>(sources: Sources<T>): Sinks<T> {
     current > 1 ? {pages, current: current - 1} : {current, pages});
   const nextReducer$ = next$.map(() => ({current, pages}) =>
     current < pages.length ? {pages, current: current + 1} : {current, pages});
-  const movePrevCursor$ = movePrev$.map(() => ({current, pages}) =>
+  const movePrevReducer$ = movePrev$.map(() => ({current, pages}) =>
     current > 1 
       ? {current: current - 1, pages: moveBefore(pages, current)} 
       : {current, pages});
-  const moveNextCursor$ = moveNext$.map(() => ({current, pages}) =>
+  const moveNextReducer$ = moveNext$.map(() => ({current, pages}) =>
     current < pages.length
       ? {current: current + 1, pages: moveAfter(pages, current)} 
       : {current, pages});
 
+  const deleteReducer$ = delete$.map(() => ({current, pages}: State<T>) => {
+    if (current < pages.length) {
+      const copy = pages.slice();
+      copy.splice(current, 1);
+      return {current, pages: copy};
+    } else if (pages.length > 1) {
+      // Last page of many
+      const copy = pages.slice(0, current - 1);
+      return {current: current -1, pages: copy};
+    } else {
+      // Last only page
+      throw new Error('Cannot remove the last element');
+    }
+  });
+
   const reducer$ = xs.merge(
     nextReducer$, 
     prevReducer$,
-    movePrevCursor$,
-    moveNextCursor$);
+    movePrevReducer$,
+    moveNextReducer$,
+    deleteReducer$);
 
-  const innerState$ = xs.merge(
-    state$, 
-    state$
-      .map(state => reducer$.map(reducer => reducer(state)))
-      .flatten());
-
-  const vdom$ = innerState$.map(({current, pages}) => {
+  const vdom$ = state$.map(({current, pages}) => {
     const elements = [];
-    const nextAttrs = current > 1
-      ? {attrs: {disabled: ''}}
-      : {};
-    const prevAttrs = current < pages.length
-      ? {attrs: {disabled: ''}}
-      : {};
+    const prevAttrs = disabledAttrs(current === 1);
+    const nextAttrs = disabledAttrs(current === pages.length);
     return div(
       '.pagination', 
       [
         button('.move-prev', prevAttrs, 'Move Previous'),
         button('.prev', prevAttrs, 'Previous'),
-        span(` ${current} / ${pages.length}`),
+        span(pages.length > 0 ? ` ${current} / ${pages.length} ` : ' <none> '),
+        button('.delete', disabledAttrs(pages.length === 1), 'Delete'),
         button('.next', nextAttrs, 'Next'),
         button('.move-next', nextAttrs, 'Move Next')
       ]);
