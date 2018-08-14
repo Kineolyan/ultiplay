@@ -10,7 +10,7 @@ import {Tab, getTabName} from './components/tab';
 import Codec from './components/codec';
 import {Player, createPlayer, PlayerId} from './components/players';
 import Scenario, {State as ScenarioState} from './components/scenario';
-import Pagination, {State as PaginationState} from './components/pagination';
+import Pagination, {State as PaginationState, CloneFn as PaginationCloneFn} from './components/pagination';
 
 type Tactic = {
   description: string,
@@ -50,6 +50,12 @@ const updateTactics: (s: State, t: Tactic) => State = (state, t) => {
 
   return state;
 };
+
+const cloneTactic: PaginationCloneFn<Tactic> = ({height, description, points}) => ({
+  height,
+  description,
+  points: points.map(p => ({...p}))
+});
 
 function main(sources: Sources): Sinks {
   const initialReducer$: Stream<(State) => State> = xs.of(() => ({
@@ -138,7 +144,8 @@ function main(sources: Sources): Sinks {
       return {...state, tacticIdx: current - 1, tactics: pages};
     }
   };
-  const pagination = isolate(Pagination, {onion: paginationLens})(sources);
+  const paginationProps$ = xs.of({clone: cloneTactic}).remember();
+  const pagination = isolate(Pagination, {onion: paginationLens})({...sources, props$: paginationProps$});
   
   const reducer$ = xs.merge(
     initialReducer$,

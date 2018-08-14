@@ -8,8 +8,13 @@ type State<T> = {
   pages: T[] 
 };
 
+type CloneFn<T> = (e: T) => T;
+
 type Sources<T> = {
   DOM: DOMSource,
+  props$: Stream<{
+    clone: CloneFn<T>
+  }>,
   onion: {
     state$: Stream<State<T>>
   }
@@ -35,6 +40,16 @@ function moveItem<T>(elements: T[], from: number, to: number): T[] {
   }
 }
 
+function copyItem<T>({current, pages}: State<T>, clone: CloneFn<T>): State<T> {
+  const newItem = clone(pages[current - 1]);
+  const copy = pages.slice();
+  copy.splice(current, 0, newItem);
+  return {
+    current: current + 1,
+    pages: copy
+  };
+}
+
 const moveBefore = (elements, current) => moveItem(elements, current, current - 1);
 const moveAfter = (elements, current) => moveItem(elements, current, current + 1);
 
@@ -44,7 +59,7 @@ const disabledAttrs = (disable: boolean) =>
     : {};
 
 function Pagination<T>(sources: Sources<T>): Sinks<T> {
-  const {state$} = sources.onion;
+  const {onion: {state$}, props$} = sources;
 
   const clicks$ = (selector: string) => sources.DOM.select(selector).events('click');
   const next$ = clicks$('.next');
@@ -52,6 +67,7 @@ function Pagination<T>(sources: Sources<T>): Sinks<T> {
   const movePrev$ = clicks$('.move-prev');
   const moveNext$ = clicks$('.move-next');
   const delete$ = clicks$('.delete');
+  const copyAfter$ = clicks$('.copy-after');
 
   // TODO find a smart way to debounce the clicks
   // The reducer still shoud apply to the state, not to suffer from concurrency
@@ -83,12 +99,16 @@ function Pagination<T>(sources: Sources<T>): Sinks<T> {
     }
   });
 
+  const copyAfterReducer$ = xs.combine(copyAfter$, props$)
+    .map(([_, {clone}]) => state => copyItem<T>(state, clone));
+
   const reducer$ = xs.merge(
     nextReducer$, 
     prevReducer$,
     movePrevReducer$,
     moveNextReducer$,
-    deleteReducer$);
+    deleteReducer$, 
+    copyAfterReducer$);
 
   const vdom$ = state$.map(({current, pages}) => {
     const elements = [];
@@ -100,6 +120,7 @@ function Pagination<T>(sources: Sources<T>): Sinks<T> {
         button('.move-prev', prevAttrs, 'Move Previous'),
         button('.prev', prevAttrs, 'Previous'),
         span(pages.length > 0 ? ` ${current} / ${pages.length} ` : ' <none> '),
+        button('.copy-after', 'Duplicate'),
         button('.delete', disabledAttrs(pages.length === 1), 'Delete'),
         button('.next', nextAttrs, 'Next'),
         button('.move-next', nextAttrs, 'Move Next')
@@ -114,5 +135,6 @@ function Pagination<T>(sources: Sources<T>): Sinks<T> {
 
 export default Pagination;
 export {
-  State
+  State,
+  CloneFn
 };
