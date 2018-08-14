@@ -117,13 +117,18 @@ function Pagination<T>(sources: Sources<T>): Sinks<T> {
     return div(
       '.pagination', 
       [
-        button('.move-prev', prevAttrs, 'Move Previous'),
-        button('.prev', prevAttrs, 'Previous'),
-        span(pages.length > 0 ? ` ${current} / ${pages.length} ` : ' <none> '),
-        button('.copy-after', 'Duplicate'),
-        button('.delete', disabledAttrs(pages.length === 1), 'Delete'),
-        button('.next', nextAttrs, 'Next'),
-        button('.move-next', nextAttrs, 'Move Next')
+        div([
+          button('.move-prev', prevAttrs, 'Move Previous'),
+          button('.prev', prevAttrs, 'Previous'),
+          span(pages.length > 0 ? ` ${current} / ${pages.length} ` : ' <none> '),
+          button('.next', nextAttrs, 'Next'),
+          button('.move-next', nextAttrs, 'Move Next')
+        ]),
+        div([
+          span('Item operations: '),
+          button('.copy-after', 'Duplicate'),
+          button('.delete', disabledAttrs(pages.length === 1), 'Delete')
+        ])
       ]);
   });
 
