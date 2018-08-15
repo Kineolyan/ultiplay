@@ -3,15 +3,20 @@ import { VNode, DOMSource, div } from "@cycle/dom";
 import isolate from '@cycle/isolate';
 import Editor from '../elements/editor';
 
+type State = {
+  value: string,
+  edit: boolean
+};
+
 type Sources = {
   DOM: DOMSource,
   onion: {
-    state$: Stream<{value: string, edit: boolean}>
+    state$: Stream<State>
   }
 };
 type Sinks = {
   DOM: Stream<VNode>,
-  onion: Stream<any>
+  onion: Stream<(State) => State>
 };
 
 function Description(sources: Sources): Sinks {
@@ -33,7 +38,8 @@ function Description(sources: Sources): Sinks {
     .map(([{value, edit}, editor]) => {
       return edit
         ? editor
-        : div('.view', value);
+        : div('.view', 
+            value || '<enter description here>');
     });
 
   return {

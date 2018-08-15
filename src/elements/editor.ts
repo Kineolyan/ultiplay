@@ -22,12 +22,14 @@ function Editor(sources: Sources): Sinks {
   const props$ = sources.props$;
   const submit$ = sources.DOM.select('.submit').events('click');
   const edit$ = (sources.DOM.events('input') as any) as Stream<InputEvent>;
-  const value$ = edit$ 
-    .filter(e => e.srcElement.type === 'textarea')
-    .compose(debounce(250))
-    .map(e => e.srcElement.value)
-    .startWith(undefined)
-    .compose(trigger(submit$));
+  const value$ = props$.map(
+    ({value}) => edit$ 
+      .filter(e => e.srcElement.type === 'textarea')
+      .compose(debounce(250))
+      .map(e => e.srcElement.value)
+      .startWith(value)
+      .compose(trigger(submit$)))
+    .flatten();
 
   const vdom$ = props$.map(({value, submitLabel}) =>
     div([

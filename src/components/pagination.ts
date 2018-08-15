@@ -3,63 +3,41 @@ import xs, { Stream } from "xstream";
 import debounce from 'xstream/extra/debounce';
 import { printStream, composablePrint } from "../operators/out";
 
-type State<T> = {
+type State = {
   current: number,
-  pages: T[] 
+  pages: number 
 };
 
-type CloneFn<T> = (e: T) => T;
+type MoveRequest = {
+  from: number, 
+  to: number
+};
+type CopyRequest = {
+  item: number, 
+  to: number
+};
 
-type Sources<T> = {
+type Sources = {
   DOM: DOMSource,
-  props$: Stream<{
-    clone: CloneFn<T>
-  }>,
   onion: {
-    state$: Stream<State<T>>
+    state$: Stream<State>
   }
 };
-type Sinks<T> = {
+type Sinks = {
   DOM: Stream<VNode>,
-  onion: Stream<(s: State<T>) => State<T>>
+  onion: Stream<(s: State) => State>,
+  moveItem: Stream<MoveRequest>,
+  copyItem: Stream<CopyRequest>,
+  deleteItem: Stream<number>
 };
-
-function moveItem<T>(elements: T[], from: number, to: number): T[] {
-  if (from < to) {
-    const copy = elements.slice();
-    copy.splice(to - 1, 0, elements[from - 1]);
-    copy.splice(from - 1, 1);
-    return copy;
-  } else if (to < from) {
-    const copy = elements.slice();
-    copy.splice(from - 1, 1);
-    copy.splice(to - 1, 0, elements[from - 1]);
-    return copy;
-  } else {
-    return elements;
-  }
-}
-
-function copyItem<T>({current, pages}: State<T>, clone: CloneFn<T>): State<T> {
-  const newItem = clone(pages[current - 1]);
-  const copy = pages.slice();
-  copy.splice(current, 0, newItem);
-  return {
-    current: current + 1,
-    pages: copy
-  };
-}
-
-const moveBefore = (elements, current) => moveItem(elements, current, current - 1);
-const moveAfter = (elements, current) => moveItem(elements, current, current + 1);
 
 const disabledAttrs = (disable: boolean) => 
   disable
     ? {attrs: {disabled: ''}}
     : {};
 
-function Pagination<T>(sources: Sources<T>): Sinks<T> {
-  const {onion: {state$}, props$} = sources;
+function Pagination(sources: Sources): Sinks {
+  const {onion: {state$}} = sources;
 
   const clicks$ = (selector: string) => sources.DOM.select(selector).events('click');
   const next$ = clicks$('.next');
@@ -74,72 +52,66 @@ function Pagination<T>(sources: Sources<T>): Sinks<T> {
   const prevReducer$ = prev$.map(() => ({current, pages}) =>
     current > 1 ? {pages, current: current - 1} : {current, pages});
   const nextReducer$ = next$.map(() => ({current, pages}) =>
-    current < pages.length ? {pages, current: current + 1} : {current, pages});
-  const movePrevReducer$ = movePrev$.map(() => ({current, pages}) =>
-    current > 1 
-      ? {current: current - 1, pages: moveBefore(pages, current)} 
-      : {current, pages});
-  const moveNextReducer$ = moveNext$.map(() => ({current, pages}) =>
-    current < pages.length
-      ? {current: current + 1, pages: moveAfter(pages, current)} 
-      : {current, pages});
+    current < pages ? {pages, current: current + 1} : {current, pages});
 
-  const deleteReducer$ = delete$.map(() => ({current, pages}: State<T>) => {
-    if (current < pages.length) {
-      const copy = pages.slice();
-      copy.splice(current, 1);
-      return {current, pages: copy};
-    } else if (pages.length > 1) {
-      // Last page of many
-      const copy = pages.slice(0, current - 1);
-      return {current: current -1, pages: copy};
-    } else {
-      // Last only page
-      throw new Error('Cannot remove the last element');
-    }
-  });
+  const movePrevOrder$ = state$
+    .filter(({current}) => current > 1)
+    .map(({current}) => movePrev$.map(() => ({from: current, to: current - 1})))
+    .flatten();
+  const moveNextOrder$ = state$
+    .filter(({current, pages}) => current < pages)
+    .map(({current}) => moveNext$.map(() => ({from: current, to: current + 1})))
+    .flatten();
+  const moveOrder$ = xs.merge(movePrevOrder$, moveNextOrder$);
 
-  const copyAfterReducer$ = xs.combine(copyAfter$, props$)
-    .map(([_, {clone}]) => state => copyItem<T>(state, clone));
+  const deleteOrder$ = state$
+    .filter(({pages}) => pages > 1)
+    .map(({current}) => delete$.map(() => current))
+    .flatten();
+
+  const copyAfterOrder$ = state$
+    .filter(({pages}) => pages > 0)
+    .map(({current}) => copyAfter$.map(() => ({item: current, to: current + 1})))
+    .flatten();
 
   const reducer$ = xs.merge(
     nextReducer$, 
-    prevReducer$,
-    movePrevReducer$,
-    moveNextReducer$,
-    deleteReducer$, 
-    copyAfterReducer$);
+    prevReducer$);
 
   const vdom$ = state$.map(({current, pages}) => {
     const elements = [];
     const prevAttrs = disabledAttrs(current === 1);
-    const nextAttrs = disabledAttrs(current === pages.length);
+    const nextAttrs = disabledAttrs(current === pages);
     return div(
       '.pagination', 
       [
         div([
           button('.move-prev', prevAttrs, 'Move Previous'),
           button('.prev', prevAttrs, 'Previous'),
-          span(pages.length > 0 ? ` ${current} / ${pages.length} ` : ' <none> '),
+          span(pages > 0 ? ` ${current} / ${pages} ` : ' <none> '),
           button('.next', nextAttrs, 'Next'),
           button('.move-next', nextAttrs, 'Move Next')
         ]),
         div([
           span('Item operations: '),
           button('.copy-after', 'Duplicate'),
-          button('.delete', disabledAttrs(pages.length === 1), 'Delete')
+          button('.delete', disabledAttrs(pages === 1), 'Delete')
         ])
       ]);
   });
 
   return {
     DOM: vdom$,
-    onion: reducer$
+    onion: reducer$,
+    moveItem: moveOrder$,
+    copyItem: copyAfterOrder$,
+    deleteItem: deleteOrder$
   };
 }
 
 export default Pagination;
 export {
   State,
-  CloneFn
+  MoveRequest,
+  CopyRequest
 };

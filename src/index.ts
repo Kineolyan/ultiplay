@@ -10,24 +10,26 @@ import {Tab, getTabName} from './components/tab';
 import Codec from './components/codec';
 import {Player, createPlayer, PlayerId} from './components/players';
 import Scenario, {State as ScenarioState} from './components/scenario';
-import Pagination, {State as PaginationState, CloneFn as PaginationCloneFn} from './components/pagination';
+import Pagination, * as pag from './components/pagination';
 
 type Tactic = {
   description: string,
   height: number,
   points: Player[]
 };
+type TacticDisplay = {
+  tab: Tab,
+  editDescription: boolean,
+  selected?: PlayerId,
+};
 type State = {
   // Constants
   colors: string[],
-  // Transient
-  tab: Tab,
   mode: string | null,
-  editDescription: boolean,
-  selected?: PlayerId,
   tacticIdx: number,
   // Tactics
-  tactics: Tactic[]
+  tactics: Tactic[],
+  display: TacticDisplay[]
 };
 
 type Sources = {
@@ -42,26 +44,73 @@ type Sinks = {
 };
 
 const getTactic: (s: State) => Tactic = (state) => state.tactics[state.tacticIdx];
-
-const updateTactics: (s: State, t: Tactic) => State = (state, t) => {
+const updateTactics: (s: State, f: (Tactic) => Tactic) => State = (state, op) => {
   const tactics = state.tactics.slice();
-  tactics[state.tacticIdx] = t;
+  tactics[state.tacticIdx] = op(tactics[state.tacticIdx]);
   state.tactics = tactics;
 
   return state;
 };
-
-const cloneTactic: PaginationCloneFn<Tactic> = ({height, description, points}) => ({
+const cloneTactic = ({height, description, points}) => ({
   height,
   description,
   points: points.map(p => ({...p}))
 });
 
+const DEFAULT_DISPLAY: TacticDisplay = {
+  tab: Tab.FIELD,
+  editDescription: false
+};
+const getDisplay: (s: State) => TacticDisplay = (state) => state.display[state.tacticIdx];
+const updateDisplay: (s: State, f: (TacticDisplay) => TacticDisplay) => State = (state, op) => {
+  const copy = state.display.slice();
+  copy[state.tacticIdx] = op(copy[state.tacticIdx]);
+  state.display = copy;
+
+  return state;
+};
+
+function moveItem<T>(elements: T[], from: number, to: number): T[] {
+  if (from < to) {
+    const copy = elements.slice();
+    copy.splice(to, 0, elements[from - 1]);
+    copy.splice(from - 1, 1);
+    return copy;
+  } else if (to < from) {
+    const copy = elements.slice();
+    copy.splice(from - 1, 1);
+    copy.splice(to - 1, 0, elements[from - 1]);
+    return copy;
+  } else {
+    return elements;
+  }
+}
+
+function copyItem<T>(elements: T[], from: number, to: number, clone: (T) => T): T[] {
+  const newItem = clone(elements[from - 1]);
+  const copy = elements.slice();
+  copy.splice(to - 1, 0, newItem);
+  return copy;
+}
+
+function deleteItem<T>(elements: T[], item: number) {
+  if (item < elements.length) {
+    const copy = elements.slice();
+    copy.splice(item - 1, 1);
+    return copy;
+  } else if (elements.length > 1) {
+    // Last page of many
+    const copy = elements.slice(0, item - 1);
+    return copy;
+  } else {
+    // Last only page
+    throw new Error('Cannot remove the last element');
+  }
+}
+
 function main(sources: Sources): Sinks {
   const initialReducer$: Stream<(State) => State> = xs.of(() => ({
-    tab: Tab.FIELD,
     mode: null,
-    editDescription: false,
     colors: [
       '#1f77b4',
       '#ff7f0e',
@@ -74,7 +123,7 @@ function main(sources: Sources): Sinks {
     tacticIdx: 1,
     tactics: [
       {
-        description: '<tactic description here>',
+        description: 'tactic description here',
         points: [
           createPlayer({id: 1, x: 0, y: 0}),
           createPlayer({id: 2, x: 0, y: 50})
@@ -90,6 +139,10 @@ function main(sources: Sources): Sinks {
         ],
         height: 3.5
       }
+    ],
+    display: [
+      DEFAULT_DISPLAY,
+      DEFAULT_DISPLAY
     ]
   }));
 
@@ -113,45 +166,87 @@ function main(sources: Sources): Sinks {
 
   const tabClick$ = sources.DOM.select('.tab').events('click')
     .map(e => parseInt(e.srcElement.dataset['id']) as Tab);
-  const tabReducer$ = tabClick$.map(tab => state => ({...state, tab}));
+  const tabReducer$ = tabClick$.map(tab => state => {
+    return updateDisplay(
+      {...state},
+      display => ({...display, tab}));
+  });
 
   const scenarioLens = {
     get(state: State): ScenarioState {
-      const {colors, tab, editDescription, selected} = state;
+      const {colors} = state;
       const {points, height, description} = getTactic(state);
+      const {tab, editDescription, selected} = getDisplay(state);
       return {colors, tab, selected, editDescription, points, height, description};
     },
     set(state: State, childState: ScenarioState): State {
       const {points, height, description, editDescription, selected} = childState;
-      const newState = {
-        ...state,
-        editDescription,
-        selected
-      };
-      return updateTactics(newState, {points, height, description});
+      const newState = {...state};
+      return updateDisplay(
+        updateTactics(
+          newState, 
+          _ => ({points, height, description})),
+        display => ({...display, editDescription, selected}));
     }
   };
   const scenario = isolate(Scenario, {onion: scenarioLens})(sources);
 
   const paginationLens = {
-    get({tacticIdx, tactics}: State): PaginationState<Tactic> {
+    get({tacticIdx, tactics}: State): pag.State {
       return {
         current: tacticIdx + 1, 
-        pages: tactics
+        pages: tactics.length
       };
     },
-    set(state: State, {current, pages}: PaginationState<Tactic>): State {
-      return {...state, tacticIdx: current - 1, tactics: pages};
+    set(state: State, {current, pages}: pag.State): State {
+      return {...state, tacticIdx: current - 1};
     }
   };
   const paginationProps$ = xs.of({clone: cloneTactic}).remember();
   const pagination = isolate(Pagination, {onion: paginationLens})({...sources, props$: paginationProps$});
+  const moveReducer$ = pagination.moveItem.map(
+    ({from, to}) => state => {
+      const tactics = moveItem(state.tactics, from, to);
+      const display = moveItem(state.display, from, to);
+      return {
+        ...state,
+        tacticIdx: to - 1,
+        tactics,
+        display
+      };
+    });
+  const copyReducer$ = pagination.copyItem.map(
+    ({item, to}) => state => {
+      const tactics = copyItem(state.tactics, item, to, cloneTactic);
+      const display = copyItem(state.display, item, to, () => DEFAULT_DISPLAY);
+      return {
+        ...state,
+        tacticIdx: to - 1,
+        tactics,
+        display
+      };
+    });
+  const deleteReducer$ = pagination.deleteItem.map(
+    (idx) => state => {
+      const tactics = deleteItem(state.tactics, idx);
+      const display = deleteItem(state.display, idx);
+      return {
+        ...state,
+        tacticIdx: Math.min(idx, tactics.length) - 1,
+        tactics,
+        display
+      };
+    });
   
   const reducer$ = xs.merge(
     initialReducer$,
     scenario.onion,
     codec.onion,
-    pagination.onion,
+    xs.merge(
+      pagination.onion,
+      moveReducer$,
+      copyReducer$,
+      deleteReducer$),
     tabReducer$);
 
   const state$ = sources.onion.state$;
@@ -160,7 +255,8 @@ function main(sources: Sources): Sinks {
       scenario.DOM,
       codec.DOM,
       pagination.DOM)
-    .map(([{tab}, scenario, codec, pagination]) => {
+    .map(([state, scenario, codec, pagination]) => {
+      const {tab} = getDisplay(state);
       const tabElements = [];
       switch (tab) {
         case Tab.FIELD:
@@ -197,7 +293,7 @@ function main(sources: Sources): Sinks {
         ...tabElements
       ]);
     })
-    .replaceError(() => xs.of(div('Internal error')));
+    .replaceError(() => xs.of(div(`Internal error`)));
 
   return {
     DOM: vdom$,

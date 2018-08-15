@@ -32,7 +32,7 @@ type Sources = {
 };
 type Sinks = {
   DOM: Stream<VNode>,
-  onion: Stream<any>
+  onion: Stream<(State) => State>
 };
 
 function Scenario(sources: Sources): Sinks {
@@ -93,9 +93,7 @@ function Scenario(sources: Sources): Sinks {
           tabElements.push(div(`Unknown tab ${tab}`));
       }
 
-      return div(
-      [
-        div('Small browser application to display Ultimate tactics in 3D'),
+      return div([
         description,
         ...tabElements
       ]);
