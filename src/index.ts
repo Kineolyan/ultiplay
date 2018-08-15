@@ -6,7 +6,7 @@ import isolate from '@cycle/isolate';
 import 'aframe';
 import 'aframe-environment-component';
 
-import {Tab, getTabName} from './components/tab';
+import {Tab, getTabName, Tabs, State as TabsState} from './components/tab';
 import Codec from './components/codec';
 import {Player, createPlayer, PlayerId} from './components/players';
 import Scenario, {State as ScenarioState} from './components/scenario';
@@ -109,6 +109,7 @@ function deleteItem<T>(elements: T[], item: number) {
 }
 
 function main(sources: Sources): Sinks {
+  const state$ = sources.onion.state$;
   const initialReducer$: Stream<(State) => State> = xs.of(() => ({
     mode: null,
     colors: [
@@ -163,14 +164,6 @@ function main(sources: Sources): Sinks {
     }
   };
   const codec = isolate(Codec, {onion: codecLens})(sources);
-
-  const tabClick$ = sources.DOM.select('.tab').events('click')
-    .map(e => parseInt(e.srcElement.dataset['id']) as Tab);
-  const tabReducer$ = tabClick$.map(tab => state => {
-    return updateDisplay(
-      {...state},
-      display => ({...display, tab}));
-  });
 
   const scenarioLens = {
     get(state: State): ScenarioState {
@@ -237,6 +230,50 @@ function main(sources: Sources): Sinks {
         display
       };
     });
+
+  const tabChildren$: Stream<VNode[]> = xs.combine(
+      state$,
+      scenario.DOM,
+      codec.DOM,
+      pagination.DOM)
+    .map(([state, scenario, codec, pagination]) => {
+      debugger;
+      const {tab} = getDisplay(state);
+      switch (tab) {
+        case Tab.FIELD:
+        case Tab.VISION:
+        case Tab.COMBO:
+          return [pagination, scenario];
+        case Tab.CODEC:
+          return [codec];
+        default:
+          return [div(`Unknown tab ${tab}`)];
+      }
+    });
+  const tabInfo = [
+    Tab.FIELD,
+    Tab.VISION,
+    Tab.COMBO,
+    Tab.CODEC
+  ].map(t => ({tab: t, label: getTabName(t)}));
+  const tabLens = {
+    get(state: State): TabsState<Tab> {
+      debugger;
+      const {tab} = getDisplay(state);
+      return {
+        tab,
+        tabs: tabInfo
+      };
+    },
+    set(state: State, {tab}: TabsState<Tab>): State {
+      debugger;
+      return updateDisplay(state, d => ({...d, tab}));
+    }
+  };
+  const tabs = isolate(Tabs, {onion: tabLens})({
+    ...sources,
+    children$: tabChildren$
+  });
   
   const reducer$ = xs.merge(
     initialReducer$,
@@ -247,50 +284,16 @@ function main(sources: Sources): Sinks {
       moveReducer$,
       copyReducer$,
       deleteReducer$),
-    tabReducer$);
+    tabs.onion);
 
-  const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
       state$,
-      scenario.DOM,
-      codec.DOM,
-      pagination.DOM)
-    .map(([state, scenario, codec, pagination]) => {
-      const {tab} = getDisplay(state);
-      const tabElements = [];
-      switch (tab) {
-        case Tab.FIELD:
-        case Tab.VISION:
-        case Tab.COMBO:
-          tabElements.push(pagination, scenario);
-          break;
-        case Tab.CODEC:
-          tabElements.push(codec);
-          break;
-        default:
-          tabElements.push(div(`Unknown tab ${tab}`));
-      }
-
-      const tabs = [
-        Tab.FIELD,
-        Tab.VISION,
-        Tab.COMBO,
-        Tab.CODEC
-      ].map(t => {
-        const attrs = {
-          'data-id': t,
-          class: 'tab',
-          style: tab === t ? 'font-weight: bold' : ''
-        };
-        const name = getTabName(t);
-        return h('li', {attrs}, name);
-      });
-
+      tabs.DOM)
+    .map(([state, tabs]) => {
       return div(
       [
         div('Small browser application to display Ultimate tactics in 3D'),
-        h('ul', tabs),
-        ...tabElements
+        tabs
       ]);
     })
     .replaceError(() => xs.of(div(`Internal error`)));
