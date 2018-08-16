@@ -86,9 +86,6 @@ function Scenario(sources: Sources): Sinks {
         case Tab.COMBO:
           tabElements.push(field, heightInc, scene);
           break;
-        case Tab.CODEC:
-          tabElements.push(div(`Cannot display codec tab`));
-          break;
         default:
           tabElements.push(div(`Unknown tab ${tab}`));
       }

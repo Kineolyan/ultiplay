@@ -2,6 +2,7 @@ import xs, {Stream} from 'xstream';
 import { VNode, DOMSource, div } from "@cycle/dom";
 import isolate from '@cycle/isolate';
 import Editor from '../elements/editor';
+import { Reducer } from 'cycle-onionify';
 
 type State = {
   value: string,
@@ -16,7 +17,7 @@ type Sources = {
 };
 type Sinks = {
   DOM: Stream<VNode>,
-  onion: Stream<(State) => State>
+  onion: Stream<Reducer<State>>
 };
 
 function Description(sources: Sources): Sinks {

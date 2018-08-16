@@ -165,8 +165,6 @@ function Player(sources: Sources): Sinks {
         case Tab.COMBO:
           tabElements.push(pagination, scenario);
           break;
-        case Tab.CODEC:
-          break; // Nothing to display
         default:
           tabElements.push(div(`Unknown tab ${tab}`));
       }
@@ -174,8 +172,7 @@ function Player(sources: Sources): Sinks {
       const tabs = [
         Tab.FIELD,
         Tab.VISION,
-        Tab.COMBO,
-        Tab.CODEC
+        Tab.COMBO
       ].map(t => {
         const attrs = {
           'data-id': t,

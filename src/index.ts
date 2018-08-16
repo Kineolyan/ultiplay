@@ -126,24 +126,16 @@ function main(sources: Sources): Sinks {
       codec.DOM,
       player.DOM)
     .map(([state, codec, player]) => {
+      const {mode} = state;
       const {tab} = getDisplay(state);
-      const tabElements = [];
-      switch (tab) {
-        case Tab.FIELD:
-        case Tab.VISION:
-        case Tab.COMBO:
-          tabElements.push(player);
-          break;
-        case Tab.CODEC:
-          tabElements.push(codec);
-          break;
-        default:
-          tabElements.push(div(`Unknown tab ${tab}`));
-      }
+      const tabElements = mode === null
+        ? [player]
+        : [];
 
       return div(
       [
         div('Small browser application to display Ultimate tactics in 3D'),
+        codec,
         ...tabElements
       ]);
     })
