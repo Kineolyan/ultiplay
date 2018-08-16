@@ -28,6 +28,7 @@ type State = {
   colors: string[],
   mode: string | null,
   showHelp: boolean,
+  viewer: 'listing' | 'player',
   tacticIdx: number,
   // Tactics
   tactics: Tactic[],
@@ -56,6 +57,7 @@ function main(sources: Sources): Sinks {
   const initialReducer$: Stream<(State) => State> = xs.of(() => ({
     mode: null,
     showHelp: false,
+    viewer: 'listing',
     colors: [
       '#1f77b4',
       '#ff7f0e',
@@ -130,13 +132,19 @@ function main(sources: Sources): Sinks {
   const listing = isolate(Listing, {onion: listingLens})(sources);
 
   const help = isolate(Help, 'showHelp')(sources);
+
+  const viewerReducer$ = xs.merge(
+    sources.DOM.select('.player-view').events('click').mapTo('player'),
+    sources.DOM.select('.listing-view').events('click').mapTo('listing'))
+    .map(viewer => state => ({...state, viewer}));
   
   const reducer$ = xs.merge(
     initialReducer$,
     codec.onion,
     player.onion,
     listing.onion,
-    help.onion);
+    help.onion,
+    viewerReducer$);
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
@@ -146,18 +154,20 @@ function main(sources: Sources): Sinks {
       listing.DOM,
       help.DOM)
     .map(([state, codec, player, listing, help]) => {
-      const {mode} = state;
+      const {mode, viewer} = state;
       const {tab} = getDisplay(state);
-      const tabElements = mode === null
-        ? [player, listing]
+      const viewerToggle = div([
+        button('.player-view', 'Player'),
+        button('.listing-view', 'Listing')]);
+      const viewerDOM = mode === null
+        ? [viewerToggle, (viewer === 'listing' ? listing : player)]
         : null;
 
-      return div(
-      [
+      return div([
         div('Small browser application to display Ultimate tactics in 3D'),
         help,
         codec,
-        ...tabElements
+        ...viewerDOM
       ]);
     })
     .replaceError(() => xs.of(div(`Internal error`)));

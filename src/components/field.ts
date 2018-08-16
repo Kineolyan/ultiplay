@@ -261,7 +261,6 @@ const Field = (sources) => {
 			return div(
 				'#field',
 				[
-					div('2D Field'),
 					h(
 						'svg',
 						{attrs: {width: 300, height: 300}},
