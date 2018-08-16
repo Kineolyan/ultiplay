@@ -10,6 +10,7 @@ import {Tab} from './components/tab';
 import Codec from './components/codec';
 import {Player as PlayerType, createPlayer, PlayerId} from './components/players';
 import Player, {State as PlayerState} from './components/tactic-player';
+import Help from './components/help';
 
 type Tactic = {
   description: string,
@@ -25,6 +26,7 @@ type State = {
   // Constants
   colors: string[],
   mode: string | null,
+  showHelp: boolean,
   tacticIdx: number,
   // Tactics
   tactics: Tactic[],
@@ -52,6 +54,7 @@ const getDisplay: (s: State) => TacticDisplay = (state) => state.display[state.t
 function main(sources: Sources): Sinks {
   const initialReducer$: Stream<(State) => State> = xs.of(() => ({
     mode: null,
+    showHelp: false,
     colors: [
       '#1f77b4',
       '#ff7f0e',
@@ -110,33 +113,38 @@ function main(sources: Sources): Sinks {
       return state;
     },
     set(state: State, childState: PlayerState): State {
-      return childState;
+      return {...state, ...childState};
     }
   };
   const player = isolate(Player, {onion: playerLens})(sources);
+
+  const help = isolate(Help, 'showHelp')(sources);
   
   const reducer$ = xs.merge(
     initialReducer$,
     codec.onion,
-    player.onion);
+    player.onion,
+    help.onion);
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
       state$,
       codec.DOM,
-      player.DOM)
-    .map(([state, codec, player]) => {
+      player.DOM,
+      help.DOM)
+    .map(([state, codec, player, help]) => {
       const {mode} = state;
       const {tab} = getDisplay(state);
       const tabElements = mode === null
-        ? [player]
-        : [];
+        ? player
+        : null;
 
       return div(
       [
         div('Small browser application to display Ultimate tactics in 3D'),
+        help,
         codec,
-        ...tabElements
+        tabElements
       ]);
     })
     .replaceError(() => xs.of(div(`Internal error`)));
