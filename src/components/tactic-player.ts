@@ -25,7 +25,6 @@ type TacticDisplay = {
 type State = {
   // Constants
   colors: string[],
-  mode: string | null,
   tacticIdx: number,
   // Tactics
   tactics: Tactic[],

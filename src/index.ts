@@ -10,6 +10,7 @@ import {Tab} from './components/tab';
 import Codec from './components/codec';
 import {Player as PlayerType, createPlayer, PlayerId} from './components/players';
 import Player, {State as PlayerState} from './components/tactic-player';
+import Listing, {State as ListingState} from './components/tactic-list';
 import Help from './components/help';
 
 type Tactic = {
@@ -118,12 +119,23 @@ function main(sources: Sources): Sinks {
   };
   const player = isolate(Player, {onion: playerLens})(sources);
 
+  const listingLens = {
+    get(state: State): ListingState {
+      return state;
+    },
+    set(state: State, childState: ListingState): State {
+      return {...state, ...childState};
+    }
+  };
+  const listing = isolate(Listing, {onion: listingLens})(sources);
+
   const help = isolate(Help, 'showHelp')(sources);
   
   const reducer$ = xs.merge(
     initialReducer$,
     codec.onion,
     player.onion,
+    listing.onion,
     help.onion);
 
   const state$ = sources.onion.state$;
@@ -131,12 +143,13 @@ function main(sources: Sources): Sinks {
       state$,
       codec.DOM,
       player.DOM,
+      listing.DOM,
       help.DOM)
-    .map(([state, codec, player, help]) => {
+    .map(([state, codec, player, listing, help]) => {
       const {mode} = state;
       const {tab} = getDisplay(state);
       const tabElements = mode === null
-        ? player
+        ? [player, listing]
         : null;
 
       return div(
@@ -144,7 +157,7 @@ function main(sources: Sources): Sinks {
         div('Small browser application to display Ultimate tactics in 3D'),
         help,
         codec,
-        tabElements
+        ...tabElements
       ]);
     })
     .replaceError(() => xs.of(div(`Internal error`)));
