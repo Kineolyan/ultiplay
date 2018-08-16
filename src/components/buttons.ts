@@ -1,39 +1,65 @@
-import xs from 'xstream';
-import {h, div, span, button} from '@cycle/dom';
+import xs, { Stream } from 'xstream';
+import {h, div, span, button, DOMSource, VNode} from '@cycle/dom';
 import isolate from '@cycle/isolate';
+import { Reducer, StateSource } from 'cycle-onionify';
 
-const Button = (sources) => {
+type ButtonSources = {
+  DOM: DOMSource,
+  props$: Stream<{
+    text: string
+  }>
+};
+type ButtonSinks = {
+  DOM: Stream<VNode>,
+  click$: Stream<any>
+};
+
+function Button(sources: ButtonSources): ButtonSinks {
   let props$ = sources.props$;
 	const click$ = sources.DOM.select('.button').events('click');
-  const delta$ = props$
-    .map((props) => click$.map(() => props.amount))
-    .flatten();
 	const vdom$ = props$.map(props => button('.button', [props.text]));
 
 	return {
 		DOM: vdom$,
-		delta$: delta$
+		click$
 	};
 }
 
-const IncDecButtons = (sources) => {
+type IncDecState = number;
+type IncDecSources = {
+  DOM: DOMSource,
+  onion: StateSource<IncDecState>,
+  props$: Stream<{
+    min: number,
+    text: string,
+    increment?: number
+  }>
+};
+type IncDecSinks = {
+  DOM: Stream<VNode>,
+  onion: Stream<Reducer<IncDecState>>,
+  increment: Stream<number>
+};
+
+function IncDecButtons(sources: IncDecSources): IncDecSinks {
 	const IncrementButton = isolate(Button);
 	const DecrementButton = isolate(Button);
 
-  const props$ = sources.props$;
-  const incrementButtonProps$ = props$
-    .map(({increment}) => ({text: 'Increment', amount: increment || 1}))
-    .remember();
-	const decrementButtonProps$ = props$
-    .map(({increment}) => ({text: 'Decrement', amount: -(increment || 1)}))
-    .remember();
-
+  const incrementButtonProps$ = xs.of({text: 'Increment'}).remember();
 	const incrementButton = IncrementButton({DOM: sources.DOM, props$: incrementButtonProps$});
-	const decrementButton = DecrementButton({DOM: sources.DOM, props$: decrementButtonProps$});
+	const decrementButtonProps$ = xs.of({text: 'Decrement'}).remember();
+  const decrementButton = DecrementButton({DOM: sources.DOM, props$: decrementButtonProps$});
+  
+  const props$ = sources.props$;
+  const delta$ = props$.map(({increment}) => {
+    const value = increment || 1;
+    return xs.merge(
+      incrementButton.click$.mapTo(value),
+      decrementButton.click$.mapTo(-value));
+  });
 
   let state$ = sources.onion.state$;
-  const picks$ = xs.merge(incrementButton.delta$, decrementButton.delta$);
-  const reducer$ = xs.combine(picks$, props$)
+  const reducer$ = xs.combine(delta$, props$)
     .map(([value, {min}]) => prev => Math.max((min || 0), value + prev));
   const vdom$ = xs.combine(state$, props$, incrementButton.DOM, decrementButton.DOM)
     .map(([state, props, incrementVTree, decrementVTree]) =>  div([
@@ -42,10 +68,11 @@ const IncDecButtons = (sources) => {
       incrementVTree,
       decrementVTree
     ]));
+
 	return {
     DOM: vdom$,
     onion: reducer$,
-    increment: picks$
+    increment: delta$
 	};
 };
 

@@ -6,6 +6,7 @@ import isolate from '@cycle/isolate';
 import {trigger} from '../operators/trigger';
 import {printStream} from '../operators/out';
 import {createPlayer, generatePlayerId} from './players';
+import {Button} from './buttons';
 
 function getMousePosition(svg, evt) {
 	var CTM = svg.getScreenCTM();
@@ -107,20 +108,6 @@ const Colors = (sources) => {
 	return {
 		DOM: vdom$,
 		color$: selectedColor$
-	};
-};
-
-const DeletePlayer = (sources) => {
-	const click$ = sources.DOM
-		.select('.button')
-		.events('click');
-
-	const vdom$ = xs.of(button('.button', 'Delete player'))
-		.remember();
-
-	return {
-		DOM: vdom$,
-		click$
 	};
 };
 
@@ -233,7 +220,10 @@ const Field = (sources) => {
 		}
 	});
 
-	const deletePlayer = isolate(DeletePlayer)(sources);
+	const deletePlayer = isolate(Button)({
+		DOM: sources.DOM,
+		props$: xs.of({text: 'Delete player'}).remember()
+	});
 	const deletePlayerReducer$ = deletePlayer.click$.map(
 		() => state => {
 			// Remove selected from the list
@@ -245,17 +235,32 @@ const Field = (sources) => {
 			return {...state, points, selected: null};
 		});
 
+	const closeButton = isolate(Button)({
+		DOM: sources.DOM,
+		props$: xs.of({text: 'Close'}).remember()
+	});
+	const closeReducer$ = closeButton.click$.map(
+		() => state => ({...state, selected: null}));
+
 	const reducer$ = xs.merge(
 		positionReducer$, 
 		selectedReducer$, 
 		colorReducer$, 
-		newPlayerReducer$, deletePlayerReducer$);
+		newPlayerReducer$, 
+		deletePlayerReducer$,
+		closeReducer$);
 
 	const state$ = sources.onion.state$;
-	const vdom$ = xs.combine(state$, points.DOM, colors.DOM, deletePlayer.DOM, pointMove$.startWith(null))
-		.map(([{selected}, elements, colors, deletePlayer]) => {
+	const vdom$ = xs.combine(
+			state$, 
+			points.DOM, 
+			colors.DOM, 
+			deletePlayer.DOM, 
+			closeButton.DOM,
+			pointMove$.startWith(null))
+		.map(([{selected}, elements, colors, deletePlayer, closeDOM]) => {
 			const elementsOnSelected = selected
-				? [colors, deletePlayer]
+				? [colors, deletePlayer, closeDOM]
 				: [];
 		
 			return div(
