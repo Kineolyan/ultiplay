@@ -1,39 +1,18 @@
 import xs, {Stream} from 'xstream';
 import Cycle from '@cycle/xstream-run';
 import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
-import onionify from 'cycle-onionify';
+import onionify, { Reducer } from 'cycle-onionify';
 import isolate from '@cycle/isolate';
 import 'aframe';
 import 'aframe-environment-component';
 
+import {State, Tactic, TacticDisplay, getInitialState} from './state/initial';
 import {Tab} from './components/tab';
-import Codec from './components/codec';
+import Codec, {State as CodecState, Mode as CodecMode} from './components/codec';
 import {Player as PlayerType, createPlayer, PlayerId} from './components/players';
 import Player, {State as PlayerState} from './components/tactic-player';
 import Listing, {State as ListingState} from './components/tactic-list';
 import Help from './components/help';
-
-type Tactic = {
-  description: string,
-  height: number,
-  points: PlayerType[]
-};
-type TacticDisplay = {
-  tab: Tab,
-  editDescription: boolean,
-  selected?: PlayerId,
-};
-type State = {
-  // Constants
-  colors: string[],
-  mode: string | null,
-  showHelp: boolean,
-  viewer: 'listing' | 'player',
-  tacticIdx: number,
-  // Tactics
-  tactics: Tactic[],
-  display: TacticDisplay[]
-};
 
 type Sources = {
   DOM: DOMSource,
@@ -43,62 +22,24 @@ type Sources = {
 };
 type Sinks = {
   DOM: Stream<VNode>,
-  onion: Stream<(State) => State>
+  onion: Stream<Reducer<State>>
 };
 
-const DEFAULT_DISPLAY: TacticDisplay = {
-  tab: Tab.FIELD,
-  editDescription: false
-};
 const getTactic: (s: State) => Tactic = (state) => state.tactics[state.tacticIdx];
 const getDisplay: (s: State) => TacticDisplay = (state) => state.display[state.tacticIdx];
 
 function main(sources: Sources): Sinks {
-  const initialReducer$: Stream<(State) => State> = xs.of(() => ({
-    mode: null,
-    showHelp: false,
-    viewer: 'listing',
-    colors: [
-      '#1f77b4',
-      '#ff7f0e',
-      '#2ca02c',
-      '#d62728',
-      '#9467bd',
-      '#ffd400',
-      '#17becf'
-    ],
-    tacticIdx: 1,
-    tactics: [
-      {
-        description: 'tactic description here',
-        points: [
-          createPlayer({id: 1, x: 0, y: 0}),
-          createPlayer({id: 2, x: 0, y: 50})
-        ],
-        height: 2
-      },
-      {
-        description: 'Second tactics',
-        points: [
-          createPlayer({id: 1, x: 0, y: 0}),
-          createPlayer({id: 2, x: 0, y: 50}),
-          createPlayer({id: 3, x: 0, y: -50})
-        ],
-        height: 3.5
-      }
-    ],
-    display: [
-      DEFAULT_DISPLAY,
-      DEFAULT_DISPLAY
-    ]
-  }));
+  const initialReducer$: Stream<Reducer<State>> = xs.of(() => getInitialState());
 
   const codecLens = {
-    get: ({tactics, selected, mode}) => ({
-      payload: {selected, tactics},
-      mode
-    }),
-    set: (state, {mode, payload}) => {
+    get({tactics, mode}: State): CodecState {
+      debugger;
+      return {
+        payload: {tactics},
+        mode
+      };
+    },
+    set(state: State, {mode, payload}: CodecState): State {
       const newState = {...state};
       if (payload !== undefined) {
         Object.assign(newState, payload);
@@ -116,6 +57,7 @@ function main(sources: Sources): Sinks {
       return state;
     },
     set(state: State, childState: PlayerState): State {
+      debugger;
       return {...state, ...childState};
     }
   };
@@ -126,6 +68,7 @@ function main(sources: Sources): Sinks {
       return state;
     },
     set(state: State, childState: ListingState): State {
+      debugger;
       return {...state, ...childState};
     }
   };
@@ -154,6 +97,7 @@ function main(sources: Sources): Sinks {
       listing.DOM,
       help.DOM)
     .map(([state, codec, player, listing, help]) => {
+      // debugger;
       const {mode, viewer} = state;
       const {tab} = getDisplay(state);
       const viewerToggle = div([

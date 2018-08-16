@@ -11,17 +11,8 @@ import {Player as PlayerType, createPlayer, PlayerId} from './players';
 import Scenario, {State as ScenarioState} from './scenario';
 import Pagination, * as pag from './pagination';
 import {updateItem, copyItem, moveItem, deleteItem} from '../state/operators';
+import {Tactic, TacticDisplay, DEFAULT_DISPLAY} from '../state/initial';
 
-type Tactic = {
-  description: string,
-  height: number,
-  points: PlayerType[]
-};
-type TacticDisplay = {
-  tab: Tab,
-  editDescription: boolean,
-  selected?: PlayerId,
-};
 type State = {
   // Constants
   colors: string[],
@@ -57,11 +48,6 @@ type ItemSources = {
 type ItemSinks = {
   DOM: Stream<VNode>,
   onion: Stream<Reducer<ItemState>>
-};
-
-const DEFAULT_DISPLAY: TacticDisplay = {
-  tab: Tab.FIELD,
-  editDescription: false
 };
 
 const cloneTactic = ({height, description, points}) => ({

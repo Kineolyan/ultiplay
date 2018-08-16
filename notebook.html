@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Ultiplay - Your tatctics in 3D</title>
+  <link rel="stylesheet" href="css/style.css"></link>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/javascript">
+var content = {
+  "tactics": [
+    {
+      "points": [
+        {
+          "id": 1,
+          "x": 0,
+          "y": 0,
+          "color": 0
+        },
+        {
+          "id": 2,
+          "x": 0,
+          "y": 50,
+          "color": 0
+        }
+      ],
+      "height": 1,
+      "description": "tactic description here"
+    },
+    {
+      "points": [
+        {
+          "id": 1,
+          "x": 0,
+          "y": 0,
+          "color": 0
+        },
+        {
+          "id": 2,
+          "x": 0,
+          "y": 50,
+          "color": 0
+        },
+        {
+          "id": 3,
+          "x": 0,
+          "y": -50,
+          "color": 0
+        }
+      ],
+      "height": 1,
+      "description": "Second tactics"
+    },
+    {
+      "points": [
+        {
+          "id": 1,
+          "x": -39,
+          "y": 2,
+          "color": 1
+        },
+        {
+          "id": 2,
+          "x": 0,
+          "y": 50,
+          "color": 0
+        },
+        {
+          "id": 3,
+          "x": 0,
+          "y": -50,
+          "color": 0
+        },
+        {
+          "id": 4,
+          "x": 35,
+          "y": 0,
+          "color": 1
+        }
+      ],
+      "height": 1,
+      "description": "Second tactics"
+    }
+  ]
+};
+
+window.localStorage.setItem(
+  'story',
+  JSON.stringify({version: 1, content: content}));
+  </script>
+  <script src="src/index.ts" type="text/javascript"></script>
+</body>
+</html>

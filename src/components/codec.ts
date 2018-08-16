@@ -1,10 +1,34 @@
-import xs from 'xstream';
+import xs, { Stream } from 'xstream';
 import debounce from 'xstream/extra/debounce';
-import {h, div, button, textarea, sub} from '@cycle/dom';
+import {h, div, button, textarea, sub, DOMSource, VNode} from '@cycle/dom';
+import { StateSource, Reducer } from 'cycle-onionify';
+import isolate from '@cycle/isolate';
 
 import {trigger} from '../operators/trigger';
 import Editor from '../elements/editor';
-import isolate from '@cycle/isolate';
+import {Player as PlayerType} from './players';
+
+type Mode = null | 'import' | 'export';
+type Tactic = {
+  description: string,
+  height: number,
+  points: PlayerType[]
+};
+type CodecPayload = {
+  tactics: Tactic[]
+};
+type State = {
+  mode: Mode,
+  payload: CodecPayload
+};
+type Sources = {
+  DOM: DOMSource,
+  onion: StateSource<State>
+};
+type Sinks = {
+  DOM: Stream<VNode>,
+  onion: Stream<Reducer<State>>
+};
 
 const renderMode = (state, editor) => {
   switch (state.mode) {
@@ -20,7 +44,7 @@ const renderMode = (state, editor) => {
   }
 };
 
-const CoDec = (sources) => {
+function CoDec(sources: Sources): Sinks {
   const export$ = sources.DOM.select('.export')
     .events('click')
     .mapTo('export');
@@ -72,3 +96,8 @@ const CoDec = (sources) => {
 }
 
 export default CoDec;
+export {
+  Mode,
+  CodecPayload,
+  State
+};

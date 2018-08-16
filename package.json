@@ -18,6 +18,7 @@
   },
   "scripts": {
     "build": "parcel index.html",
+    "notebook": "parcel notebook.html",
     "watch": "parcel watch index.html"
   }
 }
