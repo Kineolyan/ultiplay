@@ -1,5 +1,5 @@
 # Standard project files
-node_modules
+node_modules/
 
 # Parcel output
 .cache
