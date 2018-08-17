@@ -1,10 +1,10 @@
 import xs, {Stream} from 'xstream';
-import {h, div, button} from '@cycle/dom';
-import {makeCollection} from 'cycle-onionify';
+import {h, div, button, DOMSource, VNode} from '@cycle/dom';
+import {makeCollection, StateSource, Reducer} from 'cycle-onionify';
 
 import {trigger} from '../operators/trigger';
 import {printStream} from '../operators/out';
-import {createPlayer, generatePlayerId} from './players';
+import {createPlayer, generatePlayerId, PlayerId, Player} from './players';
 import {Button} from './buttons';
 import isolate from '../ext/re-isolate';
 
@@ -38,13 +38,13 @@ type PointItemState = {
 	selected: boolean
 };
 
-const updatePlayerState = (state, value: PointState) => {
+function updatePlayerState(state: State, value: PointState): State {
 	const {points} = state;
 	const idx = points.findIndex(v => v.id === value.id);
 	const copy = [...points];
 	copy[idx] = Object.assign(copy[idx], value);
-	return Object.assign({}, state, {points: copy});
-};
+	return {...state, points: copy};
+}
 
 const makePoint = point => h(
 	'circle.draggable.player',
@@ -119,7 +119,20 @@ const normalizePosition = (position) => {
 	return position;
 };
 
-const Field = (sources) => {
+type State = {
+	colors: string[], 
+	selected: PlayerId,
+	points: Player[]
+};
+type Sources = {
+	DOM: DOMSource,
+	onion: StateSource<State>
+};
+type Sinks = {
+	DOM: Stream<VNode>,
+	onion: Stream<Reducer<State>>
+};
+function Field(sources: Sources): Sinks {
 	const svg$ = sources.DOM.select('svg');
 	const startDrag$ = svg$.events('mousedown')
 		.compose(onDraggable);
@@ -135,7 +148,7 @@ const Field = (sources) => {
 			});
 		});
 	const newPlayerReducer$ = dblClick$.map(
-		position => state => {
+		position => (state: State) => {
 			const points = state.points.slice();
 			const id =  generatePlayerId(points);
 			points.push(
@@ -190,26 +203,28 @@ const Field = (sources) => {
 
 	// Resolve colors and points into a single array
 	const pointsLens = {
-		get: ({points, colors, selected}) => points.map(p => Object.assign(
-			{},
-			p,
-			{
+		get({points, colors, selected}: State): PointItemState[] {
+			return points.map(p => ({
+				...p,
 				color: colors[p.color],
 				selected: p.id === selected
-			})),
-		set: (state) => state // No change
+			}));
+		},
+		set(state: State, childState): State {
+			return state; // No change
+		}
 	};
 	const points: {DOM: Stream<any[]>} = isolate(Points, pointsLens)(sources);
 	const selectedReducer$ = startDrag$
 		.map(e => parseInt(e.srcElement.dataset['id']))
-		.map(id => state => Object.assign({}, state, {selected: id}));
+		.map(id => (state: State) => Object.assign({}, state, {selected: id}));
 
 	const colorLens = {
 		get: ({colors}) => ({colors}),
 		set: (state) => state // No change
 	};
 	const colors = isolate(Colors, colorLens)(sources);
-	const colorReducer$ = colors.color$.map(idx => state => {
+	const colorReducer$ = colors.color$.map(idx => (state: State) => {
 		if (state.selected) {
 			const points = state.points.slice();
 			const selectedPoint = points.find(p => p.id === state.selected);
@@ -225,7 +240,7 @@ const Field = (sources) => {
 		props$: xs.of({text: 'Delete player'}).remember()
 	});
 	const deletePlayerReducer$ = deletePlayer.click$.map(
-		() => state => {
+		() => (state: State) => {
 			// Remove selected from the list
 			const points = state.points.slice();
 			const idx = points.findIndex(p => p.id === state.selected);
@@ -240,7 +255,7 @@ const Field = (sources) => {
 		props$: xs.of({text: 'Close'}).remember()
 	});
 	const closeReducer$ = closeButton.click$.map(
-		() => state => ({...state, selected: null}));
+		() => (state: State) => ({...state, selected: null}));
 
 	const reducer$ = xs.merge(
 		positionReducer$, 

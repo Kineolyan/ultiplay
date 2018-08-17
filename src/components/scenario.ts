@@ -1,7 +1,7 @@
 import xs, {Stream} from 'xstream';
 import Cycle from '@cycle/xstream-run';
 import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
-import onionify from 'cycle-onionify';
+import onionify, { StateSource, Reducer } from 'cycle-onionify';
 
 import {Tab} from './tab';
 import {IncDecButtons} from './buttons';
@@ -22,14 +22,12 @@ type State = {
 };
 
 type Sources = {
-  onion: {
-    state$: Stream<State>
-  },
+  onion: StateSource<State>,
   DOM: DOMSource
 };
 type Sinks = {
   DOM: Stream<VNode>,
-  onion: Stream<(State) => State>
+  onion: Stream<Reducer<State>>
 };
 
 function Scenario(sources: Sources): Sinks {
@@ -38,7 +36,10 @@ function Scenario(sources: Sources): Sinks {
       text: 'Height',
       increment: 0.25
     }).remember();
- const heightInc = HeightInc({...sources, props$: heightProps$});
+ const heightInc = HeightInc({
+   ...sources,
+   props$: heightProps$
+  });
 
   const fieldLens = {
     get: ({points, colors, selected}) => ({points, colors, selected}),

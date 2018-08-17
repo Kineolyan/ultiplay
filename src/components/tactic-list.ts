@@ -1,7 +1,7 @@
 import xs, {Stream} from 'xstream';
 import Cycle from '@cycle/xstream-run';
 import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
-import onionify, { makeCollection, Reducer } from 'cycle-onionify';
+import onionify, { makeCollection, Reducer, StateSource } from 'cycle-onionify';
 
 import {Tab, getTabName} from './tab';
 import {Player as PlayerType, createPlayer, PlayerId} from './players';
@@ -21,9 +21,7 @@ type State = {
 
 type Sources = {
   DOM: DOMSource,
-  onion: {
-    state$: Stream<State>
-  }
+  onion: StateSource<State>
 };
 type Sinks = {
   DOM: Stream<VNode>,
@@ -39,9 +37,7 @@ type ItemState = {
 };
 type ItemSources = {
   DOM: DOMSource,
-  onion: {
-    state$: Stream<ItemState>
-  }
+  onion: StateSource<ItemState>
 };
 type ItemSinks = {
   DOM: Stream<VNode>,

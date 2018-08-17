@@ -1,7 +1,7 @@
 import xs, {Stream} from 'xstream';
 import Cycle from '@cycle/xstream-run';
 import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
-import onionify, { Reducer } from 'cycle-onionify';
+import onionify, { Reducer, StateSource } from 'cycle-onionify';
 import 'aframe';
 import 'aframe-environment-component';
 
@@ -16,9 +16,7 @@ import Help from './components/help';
 
 type Sources = {
   DOM: DOMSource,
-  onion: {
-    state$: Stream<State>
-  }
+  onion: StateSource<State>
 };
 type Sinks = {
   DOM: Stream<VNode>,
@@ -71,7 +69,7 @@ function main(sources: Sources): Sinks {
   };
   const listing = isolate(Listing, listingLens)(sources);
 
-  const help = isolate(Help, 'showHelp')(sources);
+  const help = isolate<any, any, Sources, Sinks>(Help, 'showHelp')(sources);
 
   const viewerReducer$ = xs.merge(
     sources.DOM.select('.player-view').events('click').mapTo('player'),
