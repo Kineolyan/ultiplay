@@ -51,12 +51,14 @@ function IncDecButtons(sources: IncDecSources): IncDecSinks {
   const decrementButton = DecrementButton({DOM: sources.DOM, props$: decrementButtonProps$});
   
   const props$ = sources.props$;
-  const delta$ = props$.map(({increment}) => {
-    const value = increment || 1;
-    return xs.merge(
-      incrementButton.click$.mapTo(value),
-      decrementButton.click$.mapTo(-value));
-  });
+  const delta$: Stream<number> = props$
+    .map(({increment}) => {
+      const value = increment || 1;
+      return xs.merge(
+        incrementButton.click$.mapTo(value),
+        decrementButton.click$.mapTo(-value));
+    })
+    .flatten();
 
   let state$ = sources.onion.state$;
   const reducer$ = xs.combine(delta$, props$)
@@ -71,8 +73,7 @@ function IncDecButtons(sources: IncDecSources): IncDecSinks {
 
 	return {
     DOM: vdom$,
-    onion: reducer$,
-    increment: delta$
+    onion: reducer$
 	};
 };
 

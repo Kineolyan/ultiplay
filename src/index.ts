@@ -33,7 +33,6 @@ function main(sources: Sources): Sinks {
 
   const codecLens = {
     get({tactics, mode}: State): CodecState {
-      debugger;
       return {
         payload: {tactics},
         mode
@@ -57,7 +56,6 @@ function main(sources: Sources): Sinks {
       return state;
     },
     set(state: State, childState: PlayerState): State {
-      debugger;
       return {...state, ...childState};
     }
   };
@@ -68,7 +66,6 @@ function main(sources: Sources): Sinks {
       return state;
     },
     set(state: State, childState: ListingState): State {
-      debugger;
       return {...state, ...childState};
     }
   };
@@ -97,7 +94,6 @@ function main(sources: Sources): Sinks {
       listing.DOM,
       help.DOM)
     .map(([state, codec, player, listing, help]) => {
-      // debugger;
       const {mode, viewer} = state;
       const {tab} = getDisplay(state);
       const viewerToggle = div([
