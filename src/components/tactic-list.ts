@@ -19,49 +19,66 @@ type State = {
   display: TacticDisplay[]
 };
 
-type Sources = {
+type Sources<S> = {
   DOM: DOMSource,
-  onion: StateSource<State>
+  onion: StateSource<S>
 };
-type Sinks = {
+type Sinks<S> = {
   DOM: Stream<VNode>,
-  onion: Stream<Reducer<State>>
+  onion: Stream<Reducer<S>>,
+  moveItem: Stream<pag.MoveRequest>,
+  copyItem: Stream<pag.CopyRequest>,
+  deleteItem: Stream<number>
 };
 
 type ItemState = {
   // Constants
   colors: string[],
   // Tactics
+  current: number,
+  pages: number,
   tactic: Tactic,
   display: TacticDisplay
 };
-type ItemSources = {
-  DOM: DOMSource,
-  onion: StateSource<ItemState>
-};
-type ItemSinks = {
-  DOM: Stream<VNode>,
-  onion: Stream<Reducer<ItemState>>
-};
 
-const cloneTactic = ({height, description, points}) => ({
-  height,
-  description,
-  points: points.map(p => ({...p}))
-});
-
-function Item(sources: ItemSources): ItemSinks {
+function Item(sources: Sources<ItemState>): Sinks<ItemState> {
   const {DOM: dom$, onion: {state$}} = sources;
 
-  const tabClick$ = dom$.select('.tab').events('click')
+  const clicks$ = (selector: string) => dom$.select(selector).events('click');
+  const movePrev$ = clicks$('.move-prev');
+  const moveNext$ = clicks$('.move-next');
+  const delete$ = clicks$('.delete');
+  const copyAfter$ = clicks$('.copy-after');
+
+  const tabClick$ = clicks$('.tab')
     .map(e => parseInt(e.srcElement.dataset['id']) as Tab);
-  const tabReducer$: Stream<Reducer<State>> = tabClick$.map(tab => state => {
+  const tabReducer$ = tabClick$.map(tab => (state: ItemState) => {
     const display = {...state.display, tab};
     return {
       ...state,
       display
     };
   });
+
+  const movePrevOrder$ = state$
+    .filter(({current}) => current > 1)
+    .map(({current}) => movePrev$.map(() => ({from: current, to: current - 1})))
+    .flatten();
+  const moveNextOrder$ = state$
+    .filter(({current, pages}) => current < pages)
+    .map(({current}) => moveNext$.map(() => ({from: current, to: current + 1})))
+    .flatten();
+  const moveOrder$ = xs.merge(movePrevOrder$, moveNextOrder$);
+
+  const deleteOrder$ = state$
+    .filter(({pages}) => pages > 1)
+    .map(({current}) => delete$.map(() => current))
+    .flatten();
+
+  const copyAfterOrder$ = state$
+    .filter(({pages}) => pages > 0)
+    .map(({current}) => copyAfter$.map(() => ({item: current, to: current + 1})))
+    .flatten();
 
   const scenarioLens = {
     get(state: ItemState): ScenarioState {
@@ -93,7 +110,7 @@ function Item(sources: ItemSources): ItemSinks {
       state$,
       scenario.DOM)
     .map(([state, scenario]) => {
-      const {display: {tab}} = state;
+      const {display: {tab}, current, pages} = state;
 
       const tabs = [
         Tab.FIELD,
@@ -109,74 +126,67 @@ function Item(sources: ItemSources): ItemSinks {
         return h('li', {attrs}, name);
       });
 
+      const deletAattrs = pages === 1
+        ? {attrs: {disabled: ''}}
+        : {};
+
       return div([
         h('ul', tabs),
-        scenario
+        current > 1
+          ? div([
+              button('.move-prev', 'Move Previous')
+            ])
+          : null,
+        scenario,
+        div([
+          span('Item operations: '),
+          button('.copy-after', 'Duplicate'),
+          button('.delete', deletAattrs, 'Delete')
+        ]),
+        current < pages
+          ? div([
+              button('.move-next', 'Move Next')
+            ])
+          : null
       ]);
     })
     .replaceError(() => xs.of(div(`Internal error in tactic player`)));
 
   return {
     DOM: vdom$,
-    onion: reducer$
+    onion: reducer$,
+    moveItem: moveOrder$,
+    copyItem: copyAfterOrder$,
+    deleteItem: deleteOrder$
   };
 }
 
-const List = (sources) => {
+function List(sources: Sources<ItemState[]>): Sinks<ItemState> {
 	const L = makeCollection({
 		item: Item,
 		itemKey: (tactic: ItemState, index) => `${index}`,
 		itemScope: key => key,
 		collectSinks: instances => ({
       DOM: instances.pickCombine('DOM'),
-      onion: instances.pickMerge('onion')
+      onion: instances.pickMerge('onion'),
+      moveItem: instances.pickMerge('moveItem'),
+      copyItem: instances.pickMerge('copyItem'),
+      deleteItem: instances.pickMerge('deleteItem')
 		})
 	});
 	return L(sources);
 };
 
-function Listing(sources: Sources): Sinks {
-  // const moveReducer$ = pagination.moveItem.map(
-  //   ({from, to}) => state => {
-  //     const tactics = moveItem(state.tactics, from, to);
-  //     const display = moveItem(state.display, from, to);
-  //     return {
-  //       ...state,
-  //       tacticIdx: to - 1,
-  //       tactics,
-  //       display
-  //     };
-  //   });
-  // const copyReducer$ = pagination.copyItem.map(
-  //   ({item, to}) => state => {
-  //     const tactics = copyItem(state.tactics, item, to, cloneTactic);
-  //     const display = copyItem(state.display, item, to, () => DEFAULT_DISPLAY);
-  //     return {
-  //       ...state,
-  //       tacticIdx: to - 1,
-  //       tactics,
-  //       display
-  //     };
-  //   });
-  // const deleteReducer$ = pagination.deleteItem.map(
-  //   (idx) => state => {
-  //     const tactics = deleteItem(state.tactics, idx);
-  //     const display = deleteItem(state.display, idx);
-  //     return {
-  //       ...state,
-  //       tacticIdx: Math.min(idx, tactics.length) - 1,
-  //       tactics,
-  //       display
-  //     };
-  //   });
-
+function Listing(sources: Sources<State>): Sinks<State> {
   const listLens = {
     get({colors, tactics, display}: State): ItemState[] {
       // A bit ugly without zip
       return tactics.map((tactic, idx) => ({
         colors,
         tactic,
-        display: display[idx]
+        display: display[idx],
+        current: idx + 1,
+        pages: tactics.length
       }));
     },
     set(state: State, childStates: ItemState[]): State {
@@ -187,7 +197,7 @@ function Listing(sources: Sources): Sinks {
       };
     }
   };
-  const list = isolate(List, listLens)(sources);
+  const list = isolate(List, listLens)(sources) as Sinks<State>;
   
   const reducer$ = xs.merge(
     list.onion);
@@ -204,10 +214,15 @@ function Listing(sources: Sources): Sinks {
   return {
     DOM: vdom$,
     onion: reducer$,
+    moveItem: list.moveItem,
+    copyItem: list.copyItem,
+    deleteItem: list.deleteItem
   };
 };
 
 export default Listing;
 export {
-  State
+  State,
+  Sources,
+  Sinks
 };

@@ -24,20 +24,18 @@ type Sources = {
   DOM: DOMSource,
   onion: StateSource<State>
 };
-type Sinks = {
+type Sinks<S> = {
   DOM: Stream<VNode>,
-  onion: Stream<Reducer<State>>
+  onion: Stream<Reducer<S>>,
+  moveItem: Stream<pag.MoveRequest>,
+  copyItem: Stream<pag.CopyRequest>,
+  deleteItem: Stream<number>
 };
 
 const getTactic: (s: State) => Tactic = (state) => state.tactics[state.tacticIdx];
 const getDisplay: (s: State) => TacticDisplay = (state) => state.display[state.tacticIdx];
-const cloneTactic = ({height, description, points}) => ({
-  height,
-  description,
-  points: points.map(p => ({...p}))
-});
 
-function Player(sources: Sources): Sinks {
+function Player(sources: Sources): Sinks<State> {
   const tabClick$ = sources.DOM.select('.tab').events('click')
     .map(e => parseInt(e.srcElement.dataset['id']) as Tab);
   const tabReducer$: Stream<Reducer<State>> = tabClick$.map(tab => state => {
@@ -89,48 +87,11 @@ function Player(sources: Sources): Sinks {
     }
   };
   const pagination = isolate(Pagination, paginationLens)(sources) as pag.Sinks<State>;
-  const moveReducer$ = pagination.moveItem.map(
-    ({from, to}) => state => {
-      const tactics = moveItem(state.tactics, from, to);
-      const display = moveItem(state.display, from, to);
-      return {
-        ...state,
-        tacticIdx: to - 1,
-        tactics,
-        display
-      };
-    });
-  const copyReducer$ = pagination.copyItem.map(
-    ({item, to}) => state => {
-      const tactics = copyItem(state.tactics, item, to, cloneTactic);
-      const display = copyItem(state.display, item, to, () => DEFAULT_DISPLAY);
-      return {
-        ...state,
-        tacticIdx: to - 1,
-        tactics,
-        display
-      };
-    });
-  const deleteReducer$ = pagination.deleteItem.map(
-    (idx) => state => {
-      const tactics = deleteItem(state.tactics, idx);
-      const display = deleteItem(state.display, idx);
-      return {
-        ...state,
-        tacticIdx: Math.min(idx, tactics.length) - 1,
-        tactics,
-        display
-      };
-    });
   
   const reducer$ = xs.merge(
     tabReducer$,
     scenario.onion,
-    xs.merge(
-      pagination.onion,
-      moveReducer$,
-      copyReducer$,
-      deleteReducer$));
+    pagination.onion);
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
@@ -175,10 +136,15 @@ function Player(sources: Sources): Sinks {
   return {
     DOM: vdom$,
     onion: reducer$,
+    moveItem: pagination.moveItem,
+    copyItem: pagination.copyItem,
+    deleteItem: pagination.deleteItem
   };
 };
 
 export default Player;
 export {
-  State
+  State,
+  Sources,
+  Sinks
 };

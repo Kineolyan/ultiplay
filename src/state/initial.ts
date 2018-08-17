@@ -55,7 +55,7 @@ function getInitialV1State(state): State {
 
 function getInitialDevState(): State {
   return {
-    mode: 'export',
+    mode: null,
     showHelp: false,
     viewer: 'listing',
     colors: [
