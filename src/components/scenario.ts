@@ -31,15 +31,14 @@ type Sinks = {
 };
 
 function Scenario(sources: Sources): Sinks {
-  const HeightInc = isolate(IncDecButtons, 'height');
   const heightProps$ = xs.of({
       text: 'Height',
       increment: 0.25
     }).remember();
- const heightInc = HeightInc({
+  const heightInc = isolate(IncDecButtons, 'height')({
    ...sources,
    props$: heightProps$
-  });
+  }) as Sinks;
 
   const fieldLens = {
     get: ({points, colors, selected}) => ({points, colors, selected}),

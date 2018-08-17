@@ -81,7 +81,18 @@ const Points = (sources) => {
 	return PointCollection(sources);
 };
 
-const Colors = (sources) => {
+type ColorState = {
+	colors: string[]
+}
+type ColorSources = {
+	DOM: DOMSource,
+	onion: StateSource<ColorState>
+}
+type ColorSinks = {
+	DOM: Stream<VNode>,
+	color$: Stream<number>
+}
+function Colors(sources: ColorSources): ColorSinks {
 	const state$ = sources.onion.state$;
 	const selectedColor$ = sources.DOM
 		.select('.color-block')
@@ -214,16 +225,20 @@ function Field(sources: Sources): Sinks {
 			return state; // No change
 		}
 	};
-	const points: {DOM: Stream<any[]>} = isolate(Points, pointsLens)(sources);
+	const points = isolate(Points, pointsLens)(sources);
 	const selectedReducer$ = startDrag$
 		.map(e => parseInt(e.srcElement.dataset['id']))
 		.map(id => (state: State) => Object.assign({}, state, {selected: id}));
 
 	const colorLens = {
-		get: ({colors}) => ({colors}),
-		set: (state) => state // No change
+		get({colors}: State): ColorState {
+			return {colors};
+		},
+		set(state: State, _: ColorState): State {
+			return state // No change
+		}
 	};
-	const colors = isolate(Colors, colorLens)(sources);
+	const colors = isolate(Colors, colorLens)(sources) as ColorSinks;
 	const colorReducer$ = colors.color$.map(idx => (state: State) => {
 		if (state.selected) {
 			const points = state.points.slice();

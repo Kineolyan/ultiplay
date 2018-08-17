@@ -88,7 +88,7 @@ function Player(sources: Sources): Sinks {
       return {...state, tacticIdx: current - 1};
     }
   };
-  const pagination = isolate(Pagination, paginationLens)(sources);
+  const pagination = isolate(Pagination, paginationLens)(sources) as pag.Sinks<State>;
   const moveReducer$ = pagination.moveItem.map(
     ({from, to}) => state => {
       const tactics = moveItem(state.tactics, from, to);

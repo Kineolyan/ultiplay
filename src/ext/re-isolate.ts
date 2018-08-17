@@ -13,7 +13,7 @@ type StandardSources<T> = {
 };
 type StandardSinks<T> = {
   DOM: Stream<VNode>,
-  onion: Stream<Reducer<T>>
+  onion?: Stream<Reducer<T>>
 };
 
 function reisolate<InnerSo, InnerSi>(component: Component<InnerSo, InnerSi>): Component<InnerSo, InnerSi>;
