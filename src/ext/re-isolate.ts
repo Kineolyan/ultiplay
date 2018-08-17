@@ -1,7 +1,7 @@
 import {Stream} from 'xstream';
 import isolate, {Component} from '@cycle/isolate';
 import { Lens, StateSource, Reducer } from 'cycle-onionify';
-import { DOMSource } from '@cycle/dom';
+import { DOMSource, VNode } from '@cycle/dom';
 
 function isString(value: any): value is string {
   return typeof value === 'string';
@@ -10,11 +10,11 @@ function isString(value: any): value is string {
 type StandardSources<T> = {
   DOM: DOMSource
   onion: StateSource<T>
-}
+};
 type StandardSinks<T> = {
-  DOM: DOMSource
+  DOM: Stream<VNode>,
   onion: Stream<Reducer<T>>
-}
+};
 
 function reisolate<InnerSo, InnerSi>(component: Component<InnerSo, InnerSi>): Component<InnerSo, InnerSi>;
 function reisolate<InnerSo, InnerSi, OuterSo, OuterSi>(component: Component<InnerSo, InnerSi>, scope: string): Component<OuterSo, OuterSi>;
@@ -43,9 +43,11 @@ function reisolate<
   if (scope === undefined) {
     return isolate(component) as Component<InnerSo, InnerSi>;
   } else if (isString(scope)) {
-    return isolate(component, scope) as Component<OuterSo, OuterSi>;
+    const cpn = isolate(component, scope) as Component<OuterSo, OuterSi>;
+    return (sources: OuterSo) => cpn(sources);
   } else {
-    return isolate(component, {onion: scope}) as Component<ESSo,  ESSi>;
+    const cpn = isolate(component, {onion: scope}) as Component<ESSo,  ESSi>;
+    return (sources: ESSo) => cpn(sources);
   }
 }
 export default reisolate;
