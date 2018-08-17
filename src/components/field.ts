@@ -1,12 +1,12 @@
 import xs, {Stream} from 'xstream';
 import {h, div, button} from '@cycle/dom';
 import {makeCollection} from 'cycle-onionify';
-import isolate from '@cycle/isolate';
 
 import {trigger} from '../operators/trigger';
 import {printStream} from '../operators/out';
 import {createPlayer, generatePlayerId} from './players';
 import {Button} from './buttons';
+import isolate from '../ext/re-isolate';
 
 function getMousePosition(svg, evt) {
 	var CTM = svg.getScreenCTM();
@@ -199,7 +199,7 @@ const Field = (sources) => {
 			})),
 		set: (state) => state // No change
 	};
-	const points: {DOM: Stream<any[]>} = isolate(Points, {onion: pointsLens})(sources);
+	const points: {DOM: Stream<any[]>} = isolate(Points, pointsLens)(sources);
 	const selectedReducer$ = startDrag$
 		.map(e => parseInt(e.srcElement.dataset['id']))
 		.map(id => state => Object.assign({}, state, {selected: id}));
@@ -208,7 +208,7 @@ const Field = (sources) => {
 		get: ({colors}) => ({colors}),
 		set: (state) => state // No change
 	};
-	const colors = isolate(Colors, {onion: colorLens})(sources);
+	const colors = isolate(Colors, colorLens)(sources);
 	const colorReducer$ = colors.color$.map(idx => state => {
 		if (state.selected) {
 			const points = state.points.slice();

@@ -1,8 +1,9 @@
 import xs, {Stream} from 'xstream';
 import { VNode, DOMSource, div } from "@cycle/dom";
-import isolate from '@cycle/isolate';
 import Editor from '../elements/editor';
 import { Reducer } from 'cycle-onionify';
+
+import isolate from '../ext/re-isolate';
 
 type State = {
   value: string,

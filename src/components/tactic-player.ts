@@ -2,9 +2,6 @@ import xs, {Stream} from 'xstream';
 import Cycle from '@cycle/xstream-run';
 import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
 import onionify, { Reducer } from 'cycle-onionify';
-import isolate from '@cycle/isolate';
-import 'aframe';
-import 'aframe-environment-component';
 
 import {Tab, getTabName} from './tab';
 import {Player as PlayerType, createPlayer, PlayerId} from './players';
@@ -12,6 +9,7 @@ import Scenario, {State as ScenarioState} from './scenario';
 import Pagination, * as pag from './pagination';
 import {updateItem, copyItem, moveItem, deleteItem} from '../state/operators';
 import {Tactic, TacticDisplay, DEFAULT_DISPLAY} from '../state/initial';
+import isolate from '../ext/re-isolate';
 
 type State = {
   // Constants
@@ -79,7 +77,7 @@ function Player(sources: Sources): Sinks {
       };
     }
   };
-  const scenario = isolate(Scenario, {onion: scenarioLens})(sources);
+  const scenario = isolate(Scenario, scenarioLens)(sources);
 
   const paginationLens = {
     get({tacticIdx, tactics}: State): pag.State {
@@ -92,7 +90,7 @@ function Player(sources: Sources): Sinks {
       return {...state, tacticIdx: current - 1};
     }
   };
-  const pagination = isolate(Pagination, {onion: paginationLens})(sources);
+  const pagination = isolate(Pagination, paginationLens)(sources);
   const moveReducer$ = pagination.moveItem.map(
     ({from, to}) => state => {
       const tactics = moveItem(state.tactics, from, to);

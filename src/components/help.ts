@@ -2,7 +2,6 @@ import { DOMSource, VNode, div, h, button, span } from "@cycle/dom";
 import { Stream } from "xstream";
 import { Reducer } from "cycle-onionify";
 
-
 type State = boolean;
 
 type Sources = {
