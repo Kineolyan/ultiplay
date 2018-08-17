@@ -1,10 +1,7 @@
 import xs, {Stream} from 'xstream';
 import Cycle from '@cycle/xstream-run';
 import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
-import onionify, { makeCollection, Reducer } from 'cycle-onionify';
-import isolate from '@cycle/isolate';
-import 'aframe';
-import 'aframe-environment-component';
+import onionify, { makeCollection, Reducer, StateSource } from 'cycle-onionify';
 
 import {Tab, getTabName} from './tab';
 import {Player as PlayerType, createPlayer, PlayerId} from './players';
@@ -12,6 +9,7 @@ import Scenario, {State as ScenarioState} from './scenario';
 import Pagination, * as pag from './pagination';
 import {updateItem, copyItem, moveItem, deleteItem} from '../state/operators';
 import {Tactic, TacticDisplay, DEFAULT_DISPLAY} from '../state/initial';
+import isolate from '../ext/re-isolate';
 
 type State = {
   // Constants
@@ -23,9 +21,7 @@ type State = {
 
 type Sources = {
   DOM: DOMSource,
-  onion: {
-    state$: Stream<State>
-  }
+  onion: StateSource<State>
 };
 type Sinks = {
   DOM: Stream<VNode>,
@@ -41,9 +37,7 @@ type ItemState = {
 };
 type ItemSources = {
   DOM: DOMSource,
-  onion: {
-    state$: Stream<ItemState>
-  }
+  onion: StateSource<ItemState>
 };
 type ItemSinks = {
   DOM: Stream<VNode>,
@@ -89,7 +83,7 @@ function Item(sources: ItemSources): ItemSinks {
       };
     }
   };
-  const scenario = isolate(Scenario, {onion: scenarioLens})(sources);
+  const scenario = isolate(Scenario, scenarioLens)(sources);
 
   const reducer$ = xs.merge(
     tabReducer$,
@@ -193,7 +187,7 @@ function Listing(sources: Sources): Sinks {
       };
     }
   };
-  const list = isolate(List, {onion: listLens})(sources);
+  const list = isolate(List, listLens)(sources);
   
   const reducer$ = xs.merge(
     list.onion);

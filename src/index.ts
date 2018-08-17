@@ -1,11 +1,11 @@
 import xs, {Stream} from 'xstream';
 import Cycle from '@cycle/xstream-run';
 import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
-import onionify, { Reducer } from 'cycle-onionify';
-import isolate from '@cycle/isolate';
+import onionify, { Reducer, StateSource } from 'cycle-onionify';
 import 'aframe';
 import 'aframe-environment-component';
 
+import isolate from './ext/re-isolate';
 import {State, Tactic, TacticDisplay, getInitialState} from './state/initial';
 import {Tab} from './components/tab';
 import Codec, {State as CodecState, Mode as CodecMode} from './components/codec';
@@ -16,9 +16,7 @@ import Help from './components/help';
 
 type Sources = {
   DOM: DOMSource,
-  onion: {
-    state$: Stream<State>
-  }
+  onion: StateSource<State>
 };
 type Sinks = {
   DOM: Stream<VNode>,
@@ -49,7 +47,7 @@ function main(sources: Sources): Sinks {
       return newState;
     }
   };
-  const codec = isolate(Codec, {onion: codecLens})(sources);
+  const codec = isolate(Codec, codecLens)(sources);
 
   const playerLens = {
     get(state: State): PlayerState {
@@ -59,7 +57,7 @@ function main(sources: Sources): Sinks {
       return {...state, ...childState};
     }
   };
-  const player = isolate(Player, {onion: playerLens})(sources);
+  const player = isolate(Player, playerLens)(sources);
 
   const listingLens = {
     get(state: State): ListingState {
@@ -69,9 +67,9 @@ function main(sources: Sources): Sinks {
       return {...state, ...childState};
     }
   };
-  const listing = isolate(Listing, {onion: listingLens})(sources);
+  const listing = isolate(Listing, listingLens)(sources);
 
-  const help = isolate(Help, 'showHelp')(sources);
+  const help = isolate<any, any, Sources, Sinks>(Help, 'showHelp')(sources);
 
   const viewerReducer$ = xs.merge(
     sources.DOM.select('.player-view').events('click').mapTo('player'),

@@ -2,6 +2,7 @@ import { DOMSource, VNode, div, span, button } from "@cycle/dom";
 import xs, { Stream } from "xstream";
 import debounce from 'xstream/extra/debounce';
 import { printStream, composablePrint } from "../operators/out";
+import { Reducer } from "cycle-onionify";
 
 type State = {
   current: number,
@@ -23,9 +24,9 @@ type Sources = {
     state$: Stream<State>
   }
 };
-type Sinks = {
+type Sinks<S> = {
   DOM: Stream<VNode>,
-  onion: Stream<(s: State) => State>,
+  onion: Stream<Reducer<S>>,
   moveItem: Stream<MoveRequest>,
   copyItem: Stream<CopyRequest>,
   deleteItem: Stream<number>
@@ -36,7 +37,7 @@ const disabledAttrs = (disable: boolean) =>
     ? {attrs: {disabled: ''}}
     : {};
 
-function Pagination(sources: Sources): Sinks {
+function Pagination(sources: Sources): Sinks<State> {
   const {onion: {state$}} = sources;
 
   const clicks$ = (selector: string) => sources.DOM.select(selector).events('click');
@@ -112,6 +113,8 @@ function Pagination(sources: Sources): Sinks {
 export default Pagination;
 export {
   State,
+  Sources,
+  Sinks,
   MoveRequest,
   CopyRequest
 };

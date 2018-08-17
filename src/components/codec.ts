@@ -2,11 +2,11 @@ import xs, { Stream } from 'xstream';
 import debounce from 'xstream/extra/debounce';
 import {h, div, button, textarea, sub, DOMSource, VNode} from '@cycle/dom';
 import { StateSource, Reducer } from 'cycle-onionify';
-import isolate from '@cycle/isolate';
 
 import {trigger} from '../operators/trigger';
 import Editor from '../elements/editor';
 import {Player as PlayerType} from './players';
+import isolate from '../ext/re-isolate';
 
 type Mode = null | 'import' | 'export';
 type Tactic = {

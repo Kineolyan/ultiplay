@@ -1,6 +1,6 @@
 import xs, { Stream } from 'xstream';
 import {h, div, span, button, DOMSource, VNode} from '@cycle/dom';
-import isolate from '@cycle/isolate';
+import isolate from '../ext/re-isolate';
 import { Reducer, StateSource } from 'cycle-onionify';
 
 type ButtonSources = {
@@ -37,8 +37,7 @@ type IncDecSources = {
 };
 type IncDecSinks = {
   DOM: Stream<VNode>,
-  onion: Stream<Reducer<IncDecState>>,
-  increment: Stream<number>
+  onion: Stream<Reducer<IncDecState>>
 };
 
 function IncDecButtons(sources: IncDecSources): IncDecSinks {
@@ -62,7 +61,7 @@ function IncDecButtons(sources: IncDecSources): IncDecSinks {
 
   let state$ = sources.onion.state$;
   const reducer$ = xs.combine(delta$, props$)
-    .map(([value, {min}]) => prev => Math.max((min || 0), value + prev));
+    .map(([value, {min}]) => (prev: number) => Math.max((min || 0), value + prev));
   const vdom$ = xs.combine(state$, props$, incrementButton.DOM, decrementButton.DOM)
     .map(([state, props, incrementVTree, decrementVTree]) =>  div([
       span(props.text || "+/-"),
