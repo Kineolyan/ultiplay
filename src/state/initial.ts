@@ -72,17 +72,17 @@ function getInitialDevState(): State {
       {
         description: 'tactic description here',
         points: [
-          createPlayer({id: 1, x: 0, y: 0}),
-          createPlayer({id: 2, x: 0, y: 50})
+          createPlayer({id: 1, x: 0, y: -450}),
+          createPlayer({id: 2, x: 0, y: -400})
         ],
         height: 2
       },
       {
         description: 'Second tactics',
         points: [
-          createPlayer({id: 1, x: 0, y: 0}),
-          createPlayer({id: 2, x: 0, y: 50}),
-          createPlayer({id: 3, x: 0, y: -50})
+          createPlayer({id: 1, x: 0, y: -450}),
+          createPlayer({id: 2, x: 0, y: -400}),
+          createPlayer({id: 3, x: 0, y: -350})
         ],
         height: 3.5
       }

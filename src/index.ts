@@ -24,8 +24,6 @@ type Sinks = {
   onion: Stream<Reducer<State>>
 };
 
-const getTactic: (s: State) => Tactic = (state) => state.tactics[state.tacticIdx];
-const getDisplay: (s: State) => TacticDisplay = (state) => state.display[state.tacticIdx];
 const cloneTactic = ({height, description, points}) => ({
   height,
   description,
@@ -143,7 +141,6 @@ function main(sources: Sources): Sinks {
       help.DOM)
     .map(([state, codec, player, listing, help]) => {
       const {mode, viewer} = state;
-      const {tab} = getDisplay(state);
       const viewerToggle = div([
         button('.player-view', 'Player'),
         button('.listing-view', 'Listing')]);

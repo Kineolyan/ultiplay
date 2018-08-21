@@ -8,10 +8,16 @@ import {createPlayer, generatePlayerId, PlayerId, Player} from './players';
 import {Button} from './buttons';
 import isolate from '../ext/re-isolate';
 
+// Dimension in decimeters
+const FIELD_WIDTH: number = 380;
+const FIELD_HEIGHT: number = 1000;
+const ZONE_HEIGHT: number = 180;
+const FIELD_SCALE: number = 1;
+
 function drawField(): VNode[] {
 	return [
 		// Vertical lines
-		...[0, 380].map(x => 
+		...[1, FIELD_WIDTH * FIELD_SCALE - 1].map(x => 
 			h('line', {attrs: {
 				x1: x, 
 				y1: 0, 
@@ -20,7 +26,12 @@ function drawField(): VNode[] {
 				stroke: 'black',
 				'stroke-width': 2}})),
 		// Horizontal lines
-		...[0, 180, 1000 - 180, 1000].map(y => 
+		...[
+			1,
+			ZONE_HEIGHT * FIELD_SCALE, 
+			(FIELD_HEIGHT - ZONE_HEIGHT) * FIELD_SCALE , 
+			FIELD_HEIGHT * FIELD_SCALE - 1
+		].map(y => 
 			h('line', {attrs: {
 				x1: 0, 
 				y1: y,
@@ -39,14 +50,10 @@ function getMousePosition(svg, evt) {
 	};
 }
 
-const createCombobject = (acc, v) => {
-	if (v === 1 || v === -1) {
-		return Object.assign({}, acc, {trigger: v});
-	} else {
-		return Object.assign({}, acc, {payload: v});
-	}
+type Position = {
+	x: number,
+	y: number
 };
-
 type PointState = {
 	id: number | string,
 	x: number,
@@ -76,24 +83,26 @@ function updatePlayerState(state: State, value: PointState): State {
 	return {...state, points: copy};
 }
 
-const makePoint = point => h(
+const makePoint = point => {
+	const {x, y} = toField(point);
+	return h(
 	'circle.draggable.player',
 	{attrs: {
 		'data-id': point.id,
-		cx: 150 + point.x,
-		cy: 150 + point.y,
-		r: 15,
+		cx: x.toFixed(1),
+		cy: y.toFixed(1),
+		r: 17,
 		stroke: 'black',
-		'stroke-width': point.selected ? 2 : 1,
+		'stroke-width': point.selected ? 4 : 2,
 		fill: point.color,
 		draggable: 'true',
 		cid: point.id
 	}});
+};
 
 function Point(sources: PointSources<PointItemState>): PointSinks<VNode> {
 	const state$ = sources.onion.state$;
 	const vdom$ = state$.map(makePoint);
-
 	return {
 		DOM: vdom$
 	};
@@ -152,26 +161,30 @@ function Colors(sources: ColorSources): ColorSinks {
 	};
 };
 
-const onDraggable = (stream) => stream.filter(e => e.target.classList.contains('draggable'));
+const onDraggable: <T extends Event>(s: Stream<T>) => Stream<T> = 
+	(stream) => stream.filter(e => e.target.classList.contains('draggable'));
 
 type Scale = {w: number, h: number};
 function scale({w}: {w: number}): Scale;
 function scale({h}: {h: number}): Scale;
 function scale(i: any): Scale {
 	if (i.w !== undefined) {
-		return {w: i.w, h: 100 * i.w / 38};
+		return {w: i.w, h: FIELD_HEIGHT * i.w / FIELD_WIDTH};
 	} else if (i.h !== undefined) {
-		return {h: i.h, w: i.h * 38 / 100};
+		return {h: i.h, w: i.h * FIELD_WIDTH / FIELD_HEIGHT};
 	} else {
 		throw new Error(`Invalid input ${i}`);
 	}
 }
 
-const normalizePosition = (position) => {
-	position.x -= 150;
-	position.y -= 150;
-	return position;
-};
+const toField: (Position) => Position = ({x, y}) => ({
+	x: (x + FIELD_WIDTH / 2) * FIELD_SCALE,
+	y: (y + FIELD_HEIGHT / 2) * FIELD_SCALE
+});
+const fromField: (Position) => Position = ({x, y}) => ({
+	x: (x - FIELD_WIDTH / 2) / FIELD_SCALE,
+	y: (y - FIELD_HEIGHT / 2) / FIELD_SCALE
+});
 
 type State = {
 	colors: string[], 
@@ -196,10 +209,8 @@ function Field(sources: Sources<State>): Sinks<State> {
 	const dblClick$ = svg$.events('dblclick')
 		.map(e => {
 			e.preventDefault();
-			return normalizePosition({
-				x: e.offsetX,
-				y: e.offsetY
-			});
+			const position = getMousePosition(e.ownerTarget, e);
+			return fromField(position);
 		});
 	const newPlayerReducer$ = dblClick$.map(
 		position => (state: State) => {
@@ -252,7 +263,13 @@ function Field(sources: Sources<State>): Sinks<State> {
 		})
 		.flatten();
 	const stateUpdate$ = position$.compose(trigger(endDrag$))
-		.map((point) => normalizePosition(point));
+		.map((point) => {
+			const position = fromField(point);
+			return {
+				...point,
+				...position
+			};
+		});
 	const positionReducer$ = stateUpdate$.map(update => state => updatePlayerState(state, update));
 
 	// Resolve colors and points into a single array
@@ -344,8 +361,8 @@ function Field(sources: Sources<State>): Sinks<State> {
 						'svg',
 						{attrs: {
 							width, 
-							height,
-							viewBox: `0 0 380 1000`
+							height: height * 0.45,
+							viewBox: `0 0 ${FIELD_WIDTH * FIELD_SCALE} ${0.45 * FIELD_HEIGHT * FIELD_SCALE}`
 						}},
 						[
 							...drawField(),
@@ -354,7 +371,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 					...elementsOnSelected
 				]);
 		})
-		.remember();
+		.replaceError(() => xs.of(div('Internal error in field')));
 
 	return {
 		DOM: vdom$,

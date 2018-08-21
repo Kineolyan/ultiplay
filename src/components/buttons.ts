@@ -32,7 +32,10 @@ type IncDecSources = {
   props$: Stream<{
     min: number,
     text: string,
-    increment?: number
+    incLabel?: string,
+    decLabel?: string,
+    increment?: number,
+    format?: (n: number) => string
   }>
 };
 type IncDecSinks = {
@@ -44,12 +47,14 @@ function IncDecButtons(sources: IncDecSources): IncDecSinks {
 	const IncrementButton = isolate(Button);
 	const DecrementButton = isolate(Button);
 
-  const incrementButtonProps$ = xs.of({text: 'Increment'}).remember();
+  const props$ = sources.props$;
+  const incrementButtonProps$ = props$
+    .map(({incLabel}) => ({text: incLabel || '+'}));
 	const incrementButton = IncrementButton({DOM: sources.DOM, props$: incrementButtonProps$});
-	const decrementButtonProps$ = xs.of({text: 'Decrement'}).remember();
+	const decrementButtonProps$ = props$
+    .map(({decLabel}) => ({text: decLabel || '-'}));
   const decrementButton = DecrementButton({DOM: sources.DOM, props$: decrementButtonProps$});
   
-  const props$ = sources.props$;
   const delta$: Stream<number> = props$
     .map(({increment}) => {
       const value = increment || 1;
@@ -63,9 +68,9 @@ function IncDecButtons(sources: IncDecSources): IncDecSinks {
   const reducer$ = xs.combine(delta$, props$)
     .map(([value, {min}]) => (prev: number) => Math.max((min || 0), value + prev));
   const vdom$ = xs.combine(state$, props$, incrementButton.DOM, decrementButton.DOM)
-    .map(([state, props, incrementVTree, decrementVTree]) =>  div([
-      span(props.text || "+/-"),
-      span(`: ${state}`),
+    .map(([state, {text, format}, incrementVTree, decrementVTree]) =>  div([
+      span(text || "+/-"),
+      span(`: ${format ? format(state) : state}`),
       incrementVTree,
       decrementVTree
     ]));

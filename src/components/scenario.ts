@@ -33,7 +33,8 @@ type Sinks = {
 function Scenario(sources: Sources): Sinks {
   const heightProps$ = xs.of({
       text: 'Height',
-      increment: 0.25
+      increment: 0.25,
+      format: n => n.toFixed(2)
     }).remember();
   const heightInc = isolate(IncDecButtons, 'height')({
    ...sources,

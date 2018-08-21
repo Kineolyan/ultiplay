@@ -1,12 +1,28 @@
 import {h, div} from '@cycle/dom';
 
+// In meters
+const FIELD_WIDTH: number = 38;
+const FIELD_HEIGHT: number = 100;
+const ZONE_HEIGHT: number = 18;
+const DISPLAY_SCALE: number = 2;
+
+type Position = {
+  x: number,
+  y: number
+}
+// From decimeter position to meter in the view
+const toView: (Position) => Position = ({x, y}) => ({
+	x: (x / (10 * DISPLAY_SCALE)),
+	y: (y / (10 * DISPLAY_SCALE))
+});
+
 const verticalLine = (x) => h(
   'a-box',
   {
     attrs: {
       position: `${x} 0 0`,
       color: 'white',
-      depth: 50,
+      depth: FIELD_HEIGHT / 2,
       height: 0.5,
       width: 0.1
     }
@@ -20,27 +36,28 @@ const horizontalLine = (y) => h(
       color: 'white',
       depth: 0.1,
       height: 0.5,
-      width: 17
+      width: FIELD_WIDTH / 2
     }
   });
 
 const drawField = () => [
   // Lateral bands
-  verticalLine(-9),
-  verticalLine(9),
+  verticalLine(-FIELD_WIDTH / (2 * DISPLAY_SCALE)),
+  verticalLine(FIELD_WIDTH / (2 * DISPLAY_SCALE)),
   // front/back bands
-  horizontalLine(-25),
-  horizontalLine(-20),
-  horizontalLine(20),
-  horizontalLine(25)
+  horizontalLine(-FIELD_HEIGHT / (2 * DISPLAY_SCALE)),
+  horizontalLine(-(FIELD_HEIGHT / 2 - ZONE_HEIGHT) / DISPLAY_SCALE),
+  horizontalLine((FIELD_HEIGHT / 2 - ZONE_HEIGHT) / DISPLAY_SCALE),
+  horizontalLine(FIELD_HEIGHT / (2 * DISPLAY_SCALE))
 ];
 
 const cylinder = ({x, y, color}, colors) => {
+  const {x: px, y: py} = toView({x, y});
   return h(
     'a-cylinder',
     {
       attrs: {
-        position: `${(-x / 20).toFixed(2)} 0.9 ${(-y / 20).toFixed(2)}`,
+        position: `${(-px).toFixed(2)} 0.9 ${(-py).toFixed(2)}`,
         radius: '0.4',
         height: '1.8',
         color: colors[color]
@@ -64,7 +81,7 @@ const renderScene = ({players, height, colors}) => {
         'a-entity',
         {
           attrs: {
-            position: `0 ${height} -15`,
+            position: `0 ${height} 0`,
             rotation: '0 180 0'
           }
         },
@@ -78,14 +95,16 @@ const renderScene = ({players, height, colors}) => {
 
 const Scene = (sources) => {
   const state$ = sources.onion.state$;
-  const vdom$ = state$.map(state =>
-    div(
-      {attrs:
-        {id: 'view-3d'}
-      },
-      [
-        renderScene(state)
-      ]));
+  const vdom$ = state$
+    .map(state =>
+      div(
+        {attrs:
+          {id: 'view-3d'}
+        },
+        [
+          renderScene(state)
+        ]))
+    .replaceError(() => div('Internal error in 3D vision'));
 
   return {
     DOM: vdom$
