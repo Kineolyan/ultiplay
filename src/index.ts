@@ -6,13 +6,11 @@ import 'aframe';
 import 'aframe-environment-component';
 
 import isolate from './ext/re-isolate';
-import {State, Tactic, TacticDisplay, DEFAULT_DISPLAY, getInitialState} from './state/initial';
-import {Tab} from './components/tab';
+import {State, DEFAULT_DISPLAY, getInitialState} from './state/initial';
 import Codec, {State as CodecState, Mode as CodecMode} from './components/codec';
-import {Player as PlayerType, createPlayer, PlayerId} from './components/players';
 import Player, {State as PlayerState, Sinks as PlayerSinks} from './components/tactic-player';
 import Listing, {State as ListingState, Sinks as ListingSinks} from './components/tactic-list';
-import {updateItem, copyItem, moveItem, deleteItem} from './state/operators';
+import {copyItem, moveItem, deleteItem} from './state/operators';
 import Help from './components/help';
 
 type Sources = {

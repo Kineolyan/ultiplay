@@ -1,14 +1,11 @@
 import xs, {Stream} from 'xstream';
-import Cycle from '@cycle/xstream-run';
-import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
-import onionify, { makeCollection, Reducer, StateSource } from 'cycle-onionify';
+import {h, div, span, button, DOMSource, VNode} from '@cycle/dom';
+import { makeCollection, Reducer, StateSource } from 'cycle-onionify';
 
 import {Tab, getTabName} from './tab';
-import {Player as PlayerType, createPlayer, PlayerId} from './players';
 import Scenario, {State as ScenarioState} from './scenario';
-import Pagination, * as pag from './pagination';
-import {updateItem, copyItem, moveItem, deleteItem} from '../state/operators';
-import {Tactic, TacticDisplay, DEFAULT_DISPLAY} from '../state/initial';
+import * as pag from './pagination';
+import {Tactic, TacticDisplay} from '../state/initial';
 import isolate from '../ext/re-isolate';
 
 type State = {
@@ -85,9 +82,9 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
       const {
         colors,
         tactic: {points, height, description},
-        display: {tab, editDescription, selected}
+        display: {tab, editDescription, selected, fieldType}
       } = state;
-      return {colors, tab, selected, editDescription, points, height, description};
+      return {colors, tab, selected, editDescription, points, height, description, fieldType};
     },
     set(state: ItemState, childState: ScenarioState): ItemState {
       const {points, height, description, editDescription, selected} = childState;

@@ -1,11 +1,11 @@
 import xs, {Stream} from 'xstream';
-import {h, div, button, DOMSource, VNode} from '@cycle/dom';
+import {h, div, DOMSource, VNode} from '@cycle/dom';
 import {makeCollection, StateSource, Reducer} from 'cycle-onionify';
 
 import {trigger} from '../operators/trigger';
-import {printStream} from '../operators/out';
 import {createPlayer, generatePlayerId, PlayerId, Player} from './players';
 import {Button} from './buttons';
+import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
 
 // Dimension in decimeters
@@ -185,10 +185,38 @@ const fromField: (Position) => Position = ({x, y}) => ({
 	x: (x - FIELD_WIDTH / 2) / FIELD_SCALE,
 	y: (y - FIELD_HEIGHT / 2) / FIELD_SCALE
 });
+const fieldViewPort: (FieldType) => string = (type) => {
+	const height = FIELD_HEIGHT * FIELD_SCALE;
+	const width = FIELD_WIDTH * FIELD_SCALE;
+	switch (type) {
+		case 'full': return `0 0 ${width} ${height}`;
+		case 'middle': return `0 ${0.25 * height} ${width} ${0.75 * height}`;
+		case 'up-zone': return `0 0 ${width} ${0.45 * height}`;
+		case 'down-zone': return `0 ${0.55 * height} ${width} ${height}`;
+		default: throw new Error(`Unknown field type ${type}`);
+	}
+};
+const fieldSize: (FieldType) => {width: number, height: number} = (type) => {
+	const {w: width, h: height} = scale({h: 450});
+	switch (type) {
+		case 'full': return {width, height};
+		case 'middle': return {
+			width,
+			height: 0.5 * height
+		};
+		case 'up-zone': 
+		case 'down-zone': return {
+			width, 
+			height: 0.45 * height
+		};
+		default: throw new Error(`Unknown field type ${type}`);
+	}
+};
 
 type State = {
 	colors: string[], 
 	selected: PlayerId,
+	fieldType: FieldType,
 	points: Player[]
 };
 type Sources<S> = {
@@ -348,12 +376,12 @@ function Field(sources: Sources<State>): Sinks<State> {
 			deletePlayer.DOM, 
 			closeButton.DOM,
 			pointMove$.startWith(null))
-		.map(([{selected}, elements, colors, deletePlayer, closeDOM]) => {
+		.map(([{selected, fieldType}, elements, colors, deletePlayer, closeDOM]) => {
 			const elementsOnSelected = selected
 				? [colors, deletePlayer, closeDOM]
 				: [];
 		
-			const {w: width, h: height} = scale({h: 450});
+			const {width, height} = fieldSize(fieldType);
 			return div(
 				'#field',
 				[
@@ -361,8 +389,8 @@ function Field(sources: Sources<State>): Sinks<State> {
 						'svg',
 						{attrs: {
 							width, 
-							height: height * 0.45,
-							viewBox: `0 0 ${FIELD_WIDTH * FIELD_SCALE} ${0.45 * FIELD_HEIGHT * FIELD_SCALE}`
+							height,
+							viewBox: fieldViewPort(fieldType)
 						}},
 						[
 							...drawField(),
@@ -380,5 +408,8 @@ function Field(sources: Sources<State>): Sinks<State> {
 }
 
 export {
+	State,
+	Sources,
+	Sinks,
 	Field
 }

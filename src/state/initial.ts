@@ -9,10 +9,12 @@ type Tactic = {
   height: number,
   points: PlayerType[]
 };
+type FieldType = 'full' | 'up-zone' | 'down-zone' | 'middle';
 type TacticDisplay = {
   tab: Tab,
   editDescription: boolean,
   selected?: PlayerId,
+  fieldType: FieldType
 };
 type State = {
   // Constants
@@ -28,7 +30,8 @@ type State = {
 
 const DEFAULT_DISPLAY: TacticDisplay = {
   tab: Tab.FIELD,
-  editDescription: false
+  editDescription: false,
+  fieldType: 'full'
 };
 
 function getInitialV1State(state): State {
@@ -146,6 +149,7 @@ const getInitialState: () => State = () => {
 };
 
 export {
+  FieldType,
   Tactic,
   TacticDisplay,
   State,

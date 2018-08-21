@@ -1,15 +1,15 @@
 import xs, {Stream} from 'xstream';
-import Cycle from '@cycle/xstream-run';
-import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
-import onionify, { StateSource, Reducer } from 'cycle-onionify';
+import {div, DOMSource, VNode} from '@cycle/dom';
+import { StateSource, Reducer } from 'cycle-onionify';
 
 import {Tab} from './tab';
 import {IncDecButtons} from './buttons';
 import {Scene} from './3d-vision';
-import {Field} from './field';
-import {Player, createPlayer, PlayerId} from './players';
+import {Field, State as FieldState} from './field';
+import {Player, PlayerId} from './players';
 import Description from './description';
 import isolate from '../ext/re-isolate';
+import { FieldType } from '../state/initial';
 
 type State = {
   colors: string[],
@@ -18,7 +18,8 @@ type State = {
   selected?: PlayerId,
   description: string,
   height: number,
-  points: Player[]
+  points: Player[],
+  fieldType: FieldType
 };
 
 type Sources = {
@@ -42,13 +43,29 @@ function Scenario(sources: Sources): Sinks {
   }) as Sinks;
 
   const fieldLens = {
-    get: ({points, colors, selected}) => ({points, colors, selected}),
-    set: (state, {points, selected}) => Object.assign({}, state, {points, selected})
+    get({points, colors, selected, fieldType}: State): FieldState {
+      return {
+        points, 
+        colors, 
+        selected,
+        fieldType
+      };
+    },
+    set(state: State, {points, selected, fieldType}: FieldState): State {
+      return {
+        ...state, 
+        points, 
+        selected,
+        fieldType
+      };
+    }
   };
   const field = isolate(Field, fieldLens)(sources);
 
   const sceneLens = {
-    get: ({height, points, colors}) => ({height, players: points, colors}),
+    get({height, points, colors}) {
+      return {height, players: points, colors}
+    },
     set: (state) => state
   };
   const scene = isolate(Scene, sceneLens)(sources);
