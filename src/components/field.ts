@@ -8,6 +8,29 @@ import {createPlayer, generatePlayerId, PlayerId, Player} from './players';
 import {Button} from './buttons';
 import isolate from '../ext/re-isolate';
 
+function drawField(): VNode[] {
+	return [
+		// Vertical lines
+		...[0, 380].map(x => 
+			h('line', {attrs: {
+				x1: x, 
+				y1: 0, 
+				x2: x, 
+				y2: 1000, 
+				stroke: 'black',
+				'stroke-width': 2}})),
+		// Horizontal lines
+		...[0, 180, 1000 - 180, 1000].map(y => 
+			h('line', {attrs: {
+				x1: 0, 
+				y1: y,
+				x2: 380, 
+				y2: y, 
+				stroke: 'black',
+				'stroke-width': 2}})),
+	];
+}
+
 function getMousePosition(svg, evt) {
 	var CTM = svg.getScreenCTM();
 	return {
@@ -37,6 +60,13 @@ type PointItemState = {
 	color: string,
 	selected: boolean
 };
+type PointSources<S> = {
+	DOM: DOMSource,
+	onion: StateSource<S>
+};
+type PointSinks<E> = {
+	DOM: Stream<E>
+};
 
 function updatePlayerState(state: State, value: PointState): State {
 	const {points} = state;
@@ -60,7 +90,7 @@ const makePoint = point => h(
 		cid: point.id
 	}});
 
-const Point = (sources) => {
+function Point(sources: PointSources<PointItemState>): PointSinks<VNode> {
 	const state$ = sources.onion.state$;
 	const vdom$ = state$.map(makePoint);
 
@@ -69,7 +99,7 @@ const Point = (sources) => {
 	};
 };
 
-const Points = (sources) => {
+function Points(sources: PointSources<PointItemState[]>): PointSinks<VNode[]> {
 	const PointCollection = makeCollection({
 		item: Point,
 		itemKey: (point: PointItemState, index) => `${point.id}`,
@@ -124,6 +154,19 @@ function Colors(sources: ColorSources): ColorSinks {
 
 const onDraggable = (stream) => stream.filter(e => e.target.classList.contains('draggable'));
 
+type Scale = {w: number, h: number};
+function scale({w}: {w: number}): Scale;
+function scale({h}: {h: number}): Scale;
+function scale(i: any): Scale {
+	if (i.w !== undefined) {
+		return {w: i.w, h: 100 * i.w / 38};
+	} else if (i.h !== undefined) {
+		return {h: i.h, w: i.h * 38 / 100};
+	} else {
+		throw new Error(`Invalid input ${i}`);
+	}
+}
+
 const normalizePosition = (position) => {
 	position.x -= 150;
 	position.y -= 150;
@@ -135,15 +178,15 @@ type State = {
 	selected: PlayerId,
 	points: Player[]
 };
-type Sources = {
+type Sources<S> = {
 	DOM: DOMSource,
-	onion: StateSource<State>
+	onion: StateSource<S>
 };
-type Sinks = {
+type Sinks<S> = {
 	DOM: Stream<VNode>,
-	onion: Stream<Reducer<State>>
+	onion: Stream<Reducer<S>>
 };
-function Field(sources: Sources): Sinks {
+function Field(sources: Sources<State>): Sinks<State> {
 	const svg$ = sources.DOM.select('svg');
 	const startDrag$ = svg$.events('mousedown')
 		.compose(onDraggable);
@@ -225,7 +268,7 @@ function Field(sources: Sources): Sinks {
 			return state; // No change
 		}
 	};
-	const points = isolate(Points, pointsLens)(sources);
+	const points = isolate(Points, pointsLens)(sources) as PointSinks<VNode[]>;
 	const selectedReducer$ = startDrag$
 		.map(e => parseInt(e.srcElement.dataset['id']))
 		.map(id => (state: State) => Object.assign({}, state, {selected: id}));
@@ -293,13 +336,21 @@ function Field(sources: Sources): Sinks {
 				? [colors, deletePlayer, closeDOM]
 				: [];
 		
+			const {w: width, h: height} = scale({h: 450});
 			return div(
 				'#field',
 				[
 					h(
 						'svg',
-						{attrs: {width: 300, height: 300}},
-						elements),
+						{attrs: {
+							width, 
+							height,
+							viewBox: `0 0 380 1000`
+						}},
+						[
+							...drawField(),
+							...elements
+						]),
 					...elementsOnSelected
 				]);
 		})

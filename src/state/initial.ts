@@ -57,7 +57,7 @@ function getInitialDevState(): State {
   return {
     mode: null,
     showHelp: false,
-    viewer: 'listing',
+    viewer: 'player',
     colors: [
       '#1f77b4',
       '#ff7f0e',
