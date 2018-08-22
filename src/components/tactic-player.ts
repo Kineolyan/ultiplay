@@ -54,8 +54,9 @@ function Player(sources: Sources): Sinks<State> {
       const {tab, editDescription, selected, fieldType} = getDisplay(state);
       return {colors, tab, selected, editDescription, points, height, description, fieldType};
     },
-    set(state: State, childState: ScenarioState): State {
-      const {points, height, description, editDescription, selected} = childState;
+    set(
+        state: State, 
+        {points, height, description, editDescription, selected, fieldType}: ScenarioState): State {
       const tactics = updateItem(
         state.tactics,
         state.tacticIdx,
@@ -63,7 +64,7 @@ function Player(sources: Sources): Sinks<State> {
       const display = updateItem(
         state.display,
         state.tacticIdx,
-        d => ({...d, editDescription, selected}));
+        d => ({...d, editDescription, selected, fieldType}));
       return {
         ...state,
         tactics,

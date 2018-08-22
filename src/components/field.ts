@@ -4,7 +4,7 @@ import {makeCollection, StateSource, Reducer} from 'cycle-onionify';
 
 import {trigger} from '../operators/trigger';
 import {createPlayer, generatePlayerId, PlayerId, Player} from './players';
-import {Button} from './buttons';
+import {Button, ModeButtons, ModeState, ModeSinks} from './buttons';
 import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
 
@@ -197,17 +197,17 @@ const fieldViewPort: (FieldType) => string = (type) => {
 	}
 };
 const fieldSize: (FieldType) => {width: number, height: number} = (type) => {
-	const {w: width, h: height} = scale({h: 450});
+	const {w: width, h: height} = scale({h: 400});
 	switch (type) {
 		case 'full': return {width, height};
 		case 'middle': return {
-			width,
-			height: 0.5 * height
+			width: width / 0.5,
+			height
 		};
 		case 'up-zone': 
 		case 'down-zone': return {
-			width, 
-			height: 0.45 * height
+			width: width / 0.45, 
+			height
 		};
 		default: throw new Error(`Unknown field type ${type}`);
 	}
@@ -338,6 +338,28 @@ function Field(sources: Sources<State>): Sinks<State> {
 		}
 	});
 
+	const modeLens = {
+		get({fieldType: selected}: State): ModeState {
+			const modes: FieldType[] = [
+				'full',
+				'middle',
+				'up-zone',
+				'down-zone'
+			];
+			return {
+				modes: modes,
+				selected
+			};
+		},
+		set(state: State, {selected}: ModeState): State {
+			return {
+				...state, 
+				fieldType: selected as FieldType
+			};
+		}
+	};
+	const modes = isolate(ModeButtons, modeLens)(sources) as ModeSinks<State>;
+
 	const deletePlayer = isolate(Button)({
 		DOM: sources.DOM,
 		props$: xs.of({text: 'Delete player'}).remember()
@@ -364,6 +386,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 		positionReducer$, 
 		selectedReducer$, 
 		colorReducer$, 
+		modes.onion,
 		newPlayerReducer$, 
 		deletePlayerReducer$,
 		closeReducer$);
@@ -373,10 +396,11 @@ function Field(sources: Sources<State>): Sinks<State> {
 			state$, 
 			points.DOM, 
 			colors.DOM, 
+			modes.DOM,
 			deletePlayer.DOM, 
 			closeButton.DOM,
 			pointMove$.startWith(null))
-		.map(([{selected, fieldType}, elements, colors, deletePlayer, closeDOM]) => {
+		.map(([{selected, fieldType}, elements, colors, modes, deletePlayer, closeDOM]) => {
 			const elementsOnSelected = selected
 				? [colors, deletePlayer, closeDOM]
 				: [];
@@ -385,6 +409,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 			return div(
 				'#field',
 				[
+					modes,
 					h(
 						'svg',
 						{attrs: {

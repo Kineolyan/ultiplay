@@ -1,12 +1,14 @@
 import xs, { Stream } from 'xstream';
-import {h, div, span, button, DOMSource, VNode} from '@cycle/dom';
+import {div, span, button, DOMSource, VNode} from '@cycle/dom';
 import isolate from '../ext/re-isolate';
 import { Reducer, StateSource } from 'cycle-onionify';
+import {composablePrint} from '../operators/out';
 
 type ButtonSources = {
   DOM: DOMSource,
   props$: Stream<{
-    text: string
+    text: string | VNode,
+    disabled?: boolean
   }>
 };
 type ButtonSinks = {
@@ -16,8 +18,13 @@ type ButtonSinks = {
 
 function Button(sources: ButtonSources): ButtonSinks {
   let props$ = sources.props$;
-	const click$ = sources.DOM.select('.button').events('click');
-	const vdom$ = props$.map(props => button('.button', [props.text]));
+  const click$ = sources.DOM.select('.button').events('click');
+	const vdom$ = props$.map(({text, disabled}) => {
+    const attrs = disabled === true
+      ? {attrs: {disabled: ''}}
+      : {};
+    return button('.button', attrs, [text]);
+  });
 
 	return {
 		DOM: vdom$,
@@ -81,7 +88,64 @@ function IncDecButtons(sources: IncDecSources): IncDecSinks {
 	};
 };
 
+type ModeState = {
+  modes: string[],
+  selected: string
+};
+type ModeSources<S> = {
+  DOM: DOMSource,
+  onion: StateSource<S>
+};
+type ModeSinks<S> = {
+  DOM: Stream<VNode>,
+  onion: Stream<Reducer<S>>
+};
+function ModeButtons({DOM: dom$, onion: {state$}}: ModeSources<ModeState>): ModeSinks<ModeState> {
+	const btn = (label, disabled) => {
+    const Btn = isolate(Button);
+    const props$ = xs.of({text: label, disabled}).remember();
+    return Btn({DOM: dom$, props$});
+  };
+  const modeButtons = state$.map(({modes, selected}) => {
+    return modes.map(mode => {
+      const b = btn(mode, mode === selected);
+      const modeReducer$: Stream<Reducer<ModeState>> = b.click$
+        .map(() => (state: ModeState) => ({...state, selected: mode}));
+      return {
+        DOM: b.DOM,
+        onion: modeReducer$
+      };
+    });
+  });
+
+  const vdom$ = modeButtons
+    .map(buttons => {
+      return xs.combine(...buttons.map(b => b.DOM))
+        .map(elts => div(elts));
+    })
+    .flatten();
+  const reducer$ = modeButtons
+    .map(buttons => xs.merge(...buttons.map(b => b.onion)))
+    .flatten()
+    .compose(composablePrint('end'));
+  return {
+    DOM: vdom$,
+    onion: reducer$
+  };
+}
+
 export {
+  ButtonSources,
+  ButtonSinks,
   Button,
-  IncDecButtons
+
+  IncDecState,
+  IncDecSources,
+  IncDecSinks,
+  IncDecButtons,
+
+  ModeButtons,
+  ModeState,
+  ModeSources,
+  ModeSinks
 }
