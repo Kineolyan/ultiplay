@@ -35,7 +35,7 @@ const getDisplay: (s: State) => TacticDisplay = (state) => state.display[state.t
 
 function Player(sources: Sources): Sinks<State> {
   const tabClick$ = sources.DOM.select('.tab').events('click')
-    .map(e => parseInt(e.srcElement.dataset['id']) as Tab);
+    .map(e => parseInt(e.target.dataset['id']) as Tab);
   const tabReducer$: Stream<Reducer<State>> = tabClick$.map(tab => state => {
     const display  = updateItem(
       state.display,
@@ -55,7 +55,7 @@ function Player(sources: Sources): Sinks<State> {
       return {colors, tab, selected, editDescription, points, height, description, fieldType};
     },
     set(
-        state: State, 
+        state: State,
         {points, height, description, editDescription, selected, fieldType}: ScenarioState): State {
       const tactics = updateItem(
         state.tactics,
@@ -77,7 +77,7 @@ function Player(sources: Sources): Sinks<State> {
   const paginationLens = {
     get({tacticIdx, tactics}: State): pag.State {
       return {
-        current: tacticIdx + 1, 
+        current: tacticIdx + 1,
         pages: tactics.length
       };
     },
@@ -86,7 +86,7 @@ function Player(sources: Sources): Sinks<State> {
     }
   };
   const pagination = isolate(Pagination, paginationLens)(sources) as pag.Sinks<State>;
-  
+
   const reducer$ = xs.merge(
     tabReducer$,
     scenario.onion,

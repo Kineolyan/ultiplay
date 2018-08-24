@@ -17,26 +17,26 @@ const FIELD_SCALE: number = 1;
 function drawField(): VNode[] {
 	return [
 		// Vertical lines
-		...[1, FIELD_WIDTH * FIELD_SCALE - 1].map(x => 
+		...[1, FIELD_WIDTH * FIELD_SCALE - 1].map(x =>
 			h('line', {attrs: {
-				x1: x, 
-				y1: 0, 
-				x2: x, 
-				y2: 1000, 
+				x1: x,
+				y1: 0,
+				x2: x,
+				y2: 1000,
 				stroke: 'black',
 				'stroke-width': 2}})),
 		// Horizontal lines
 		...[
 			1,
-			ZONE_HEIGHT * FIELD_SCALE, 
-			(FIELD_HEIGHT - ZONE_HEIGHT) * FIELD_SCALE , 
+			ZONE_HEIGHT * FIELD_SCALE,
+			(FIELD_HEIGHT - ZONE_HEIGHT) * FIELD_SCALE ,
 			FIELD_HEIGHT * FIELD_SCALE - 1
-		].map(y => 
+		].map(y =>
 			h('line', {attrs: {
-				x1: 0, 
+				x1: 0,
 				y1: y,
-				x2: 380, 
-				y2: y, 
+				x2: 380,
+				y2: y,
 				stroke: 'black',
 				'stroke-width': 2}})),
 	];
@@ -138,7 +138,7 @@ function Colors(sources: ColorSources): ColorSinks {
 		.events('click')
 		.map(e => {
 			e.stopPropagation();
-			return parseInt(e.srcElement.dataset['colorIndex']);
+			return parseInt(e.target.dataset['colorIndex']);
 		});
 
 	const vdom$ = state$.map(({colors}) => {
@@ -161,7 +161,7 @@ function Colors(sources: ColorSources): ColorSinks {
 	};
 };
 
-const onDraggable: <T extends Event>(s: Stream<T>) => Stream<T> = 
+const onDraggable: <T extends Event>(s: Stream<T>) => Stream<T> =
 	(stream) => stream.filter(e => e.target.classList.contains('draggable'));
 
 type Scale = {w: number, h: number};
@@ -204,9 +204,9 @@ const fieldSize: (FieldType) => {width: number, height: number} = (type) => {
 			width: width / 0.5,
 			height
 		};
-		case 'up-zone': 
+		case 'up-zone':
 		case 'down-zone': return {
-			width: width / 0.45, 
+			width: width / 0.45,
 			height
 		};
 		default: throw new Error(`Unknown field type ${type}`);
@@ -214,7 +214,7 @@ const fieldSize: (FieldType) => {width: number, height: number} = (type) => {
 };
 
 type State = {
-	colors: string[], 
+	colors: string[],
 	selected: PlayerId,
 	fieldType: FieldType,
 	points: Player[]
@@ -232,8 +232,9 @@ function Field(sources: Sources<State>): Sinks<State> {
 	const startDrag$ = svg$.events('mousedown')
 		.compose(onDraggable);
 	const onDrag$ = svg$.events('mousemove');
-	const endDrag$ = svg$.events('mouseup')
-		.compose(onDraggable);
+	const endDrag$ = xs.merge(
+			svg$.events('mouseup'),
+			svg$.events('mouseleave').debug('leave'));
 	const dblClick$ = svg$.events('dblclick')
 		.map(e => {
 			e.preventDefault();
@@ -315,7 +316,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 	};
 	const points = isolate(Points, pointsLens)(sources) as PointSinks<VNode[]>;
 	const selectedReducer$ = startDrag$
-		.map(e => parseInt(e.srcElement.dataset['id']))
+		.map(e => parseInt(e.target.dataset['id']))
 		.map(id => (state: State) => Object.assign({}, state, {selected: id}));
 
 	const colorLens = {
@@ -353,7 +354,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 		},
 		set(state: State, {selected}: ModeState): State {
 			return {
-				...state, 
+				...state,
 				fieldType: selected as FieldType
 			};
 		}
@@ -383,28 +384,28 @@ function Field(sources: Sources<State>): Sinks<State> {
 		() => (state: State) => ({...state, selected: null}));
 
 	const reducer$ = xs.merge(
-		positionReducer$, 
-		selectedReducer$, 
-		colorReducer$, 
+		positionReducer$,
+		selectedReducer$,
+		colorReducer$,
 		modes.onion,
-		newPlayerReducer$, 
+		newPlayerReducer$,
 		deletePlayerReducer$,
 		closeReducer$);
 
 	const state$ = sources.onion.state$;
 	const vdom$ = xs.combine(
-			state$, 
-			points.DOM, 
-			colors.DOM, 
+			state$,
+			points.DOM,
+			colors.DOM,
 			modes.DOM,
-			deletePlayer.DOM, 
+			deletePlayer.DOM,
 			closeButton.DOM,
 			pointMove$.startWith(null))
 		.map(([{selected, fieldType}, elements, colors, modes, deletePlayer, closeDOM]) => {
 			const elementsOnSelected = selected
 				? [colors, deletePlayer, closeDOM]
 				: [];
-		
+
 			const {width, height} = fieldSize(fieldType);
 			return div(
 				'#field',
@@ -413,7 +414,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 					h(
 						'svg',
 						{attrs: {
-							width, 
+							width,
 							height,
 							viewBox: fieldViewPort(fieldType)
 						}},

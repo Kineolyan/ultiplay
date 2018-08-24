@@ -48,7 +48,7 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
   const copyAfter$ = clicks$('.copy-after');
 
   const tabClick$ = clicks$('.tab')
-    .map(e => parseInt(e.srcElement.dataset['id']) as Tab);
+    .map(e => parseInt(e.target.dataset['id']) as Tab);
   const tabReducer$ = tabClick$.map(tab => (state: ItemState) => {
     const display = {...state.display, tab};
     return {
@@ -195,7 +195,7 @@ function Listing(sources: Sources<State>): Sinks<State> {
     }
   };
   const list = isolate(List, listLens)(sources) as Sinks<State>;
-  
+
   const reducer$ = xs.merge(
     list.onion);
 

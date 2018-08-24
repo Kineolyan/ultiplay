@@ -16,17 +16,16 @@ type Sinks = {
   DOM: Stream<VNode>,
   value$: Stream<string | undefined>
 };
-type InputEvent = {srcElement: {type: string, value: string}};
 
 function Editor(sources: Sources): Sinks {
   const props$ = sources.props$;
   const submit$ = sources.DOM.select('.submit').events('click');
-  const edit$ = (sources.DOM.events('input') as any) as Stream<InputEvent>;
+  const edit$ = sources.DOM.events('input');
   const value$ = props$.map(
-    ({value}) => edit$ 
-      .filter(e => e.srcElement.type === 'textarea')
+    ({value}) => edit$
+      .filter(e => e.target.type === 'textarea')
       .compose(debounce(250))
-      .map(e => e.srcElement.value)
+      .map(e => e.target.value)
       .startWith(value)
       .compose(trigger(submit$)))
     .flatten();
