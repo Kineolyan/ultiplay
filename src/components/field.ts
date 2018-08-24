@@ -190,9 +190,9 @@ const fieldViewPort: (FieldType) => string = (type) => {
 	const width = FIELD_WIDTH * FIELD_SCALE;
 	switch (type) {
 		case 'full': return `0 0 ${width} ${height}`;
-		case 'middle': return `0 ${0.25 * height} ${width} ${0.75 * height}`;
+		case 'middle': return `0 ${0.25 * height} ${width} ${0.5 * height}`;
 		case 'up-zone': return `0 0 ${width} ${0.45 * height}`;
-		case 'down-zone': return `0 ${0.55 * height} ${width} ${height}`;
+		case 'down-zone': return `0 ${0.55 * height} ${width} ${0.45 * height}`;
 		default: throw new Error(`Unknown field type ${type}`);
 	}
 };
