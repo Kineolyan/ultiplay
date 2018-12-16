@@ -70,7 +70,7 @@ const renderScene = ({players, height, colors}) => {
     'a-scene',
     {
       attrs: {
-        environment: 'preset: default',
+        environment: 'preset: forest',
         embedded: ''
       }
     },
@@ -99,7 +99,7 @@ const Scene = (sources) => {
     .map(state =>
       div(
         {attrs:
-          {id: 'view-3d'}
+          {class: 'view-3d'}
         },
         [
           renderScene(state)

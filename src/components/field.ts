@@ -408,7 +408,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 
 			const {width, height} = fieldSize(fieldType);
 			return div(
-				'#field',
+				'.field',
 				[
 					modes,
 					h(
