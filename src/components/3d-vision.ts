@@ -70,7 +70,7 @@ const renderScene = ({players, height, colors}) => {
     'a-scene',
     {
       attrs: {
-        environment: 'preset: forest',
+        environment: 'preset: default',
         embedded: ''
       }
     },
