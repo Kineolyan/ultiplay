@@ -45,16 +45,16 @@ function Scenario(sources: Sources): Sinks {
   const fieldLens = {
     get({points, colors, selected, fieldType}: State): FieldState {
       return {
-        points, 
-        colors, 
+        points,
+        colors,
         selected,
         fieldType
       };
     },
     set(state: State, {points, selected, fieldType}: FieldState): State {
       return {
-        ...state, 
-        points, 
+        ...state,
+        points,
         selected,
         fieldType
       };
@@ -75,7 +75,7 @@ function Scenario(sources: Sources): Sinks {
     set: (state, {value: description, edit: editDescription}) => ({...state, description, editDescription})
   };
   const description = isolate(Description, descriptionLens)(sources);
-  
+
   const reducer$ = xs.merge(
     heightInc.onion,
     field.onion,
@@ -89,16 +89,21 @@ function Scenario(sources: Sources): Sinks {
       field.DOM,
       description.DOM)
     .map(([{tab}, scene, heightInc, field, description]) => {
+      const sceneGroup = div('.scene-group', [heightInc, scene]);
       const tabElements = [];
+      let scenarioClass;
       switch (tab) {
         case Tab.FIELD:
           tabElements.push(field);
+          scenarioClass = 'field-scenario';
           break;
         case Tab.VISION:
-          tabElements.push(heightInc, scene);
+          tabElements.push(sceneGroup);
+          scenarioClass = 'td-scenario';
           break;
         case Tab.COMBO:
-          tabElements.push(field, heightInc, scene);
+          tabElements.push(field, sceneGroup);
+          scenarioClass = 'combo-scenario';
           break;
         default:
           tabElements.push(div(`Unknown tab ${tab}`));
@@ -106,7 +111,7 @@ function Scenario(sources: Sources): Sinks {
 
       return div([
         description,
-        ...tabElements
+        div(`.scenario.${scenarioClass}`, tabElements)
       ]);
     })
     .replaceError(() => xs.of(div('Internal error in scenario')));

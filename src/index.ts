@@ -6,7 +6,7 @@ import 'aframe';
 import 'aframe-environment-component';
 
 import isolate from './ext/re-isolate';
-import {State, DEFAULT_DISPLAY, getInitialState} from './state/initial';
+import {State, getInitialState, TacticDisplay, TacticDisplay, Tactic, Tactic} from './state/initial';
 import Codec, {State as CodecState, Mode as CodecMode} from './components/codec';
 import Player, {State as PlayerState, Sinks as PlayerSinks} from './components/tactic-player';
 import Listing, {State as ListingState, Sinks as ListingSinks} from './components/tactic-list';
@@ -22,10 +22,13 @@ type Sinks = {
   onion: Stream<Reducer<State>>
 };
 
-const cloneTactic = ({height, description, points}) => ({
+const cloneTactic: (Tactic) => Tactic = ({height, description, points}) => ({
   height,
   description,
   points: points.map(p => ({...p}))
+});
+const cloneDisplay: (TacticDisplay) => TacticDisplay = (display) => ({
+  ...display
 });
 
 function main(sources: Sources): Sinks {
@@ -89,7 +92,7 @@ function main(sources: Sources): Sinks {
       listing.copyItem)
     .map(({item, to}) => state => {
       const tactics = copyItem(state.tactics, item, to, cloneTactic);
-      const display = copyItem(state.display, item, to, () => DEFAULT_DISPLAY);
+      const display = copyItem(state.display, item, to, cloneDisplay);
       return {
         ...state,
         tacticIdx: to - 1,
@@ -117,7 +120,7 @@ function main(sources: Sources): Sinks {
     sources.DOM.select('.player-view').events('click').mapTo('player'),
     sources.DOM.select('.listing-view').events('click').mapTo('listing'))
     .map(viewer => state => ({...state, viewer}));
-  
+
   const reducer$ = xs.merge(
     initialReducer$,
     codec.onion,

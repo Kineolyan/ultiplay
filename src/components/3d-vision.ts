@@ -99,7 +99,7 @@ const Scene = (sources) => {
     .map(state =>
       div(
         {attrs:
-          {id: 'view-3d'}
+          {class: 'view-3d'}
         },
         [
           renderScene(state)

@@ -1,20 +1,18 @@
 import { DOMSource, VNode, div, span, button } from "@cycle/dom";
 import xs, { Stream } from "xstream";
-import debounce from 'xstream/extra/debounce';
-import { printStream, composablePrint } from "../operators/out";
 import { Reducer } from "cycle-onionify";
 
 type State = {
   current: number,
-  pages: number 
+  pages: number
 };
 
 type MoveRequest = {
-  from: number, 
+  from: number,
   to: number
 };
 type CopyRequest = {
-  item: number, 
+  item: number,
   to: number
 };
 
@@ -32,7 +30,7 @@ type Sinks<S> = {
   deleteItem: Stream<number>
 };
 
-const disabledAttrs = (disable: boolean) => 
+const disabledAttrs = (disable: boolean) =>
   disable
     ? {attrs: {disabled: ''}}
     : {};
@@ -76,7 +74,7 @@ function Pagination(sources: Sources): Sinks<State> {
     .flatten();
 
   const reducer$ = xs.merge(
-    nextReducer$, 
+    nextReducer$,
     prevReducer$);
 
   const vdom$ = state$.map(({current, pages}) => {
@@ -84,7 +82,7 @@ function Pagination(sources: Sources): Sinks<State> {
     const prevAttrs = disabledAttrs(current === 1);
     const nextAttrs = disabledAttrs(current === pages);
     return div(
-      '.pagination', 
+      '.pagination',
       [
         div([
           button('.move-prev', prevAttrs, 'Move Previous'),

@@ -2,12 +2,38 @@ body {
   margin: 10px;
 }
 
-#view-3d {
-  height: calc(50vh - 20px);
-  width: calc(50vw - 20px);
+.field {
+  min-width: 350px;
 }
 
-#field svg {
+.view-3d {
+  height: calc(50vh - 20px);
+  min-width: 450px;
+  max-width: 1000px;
+}
+
+.td-scenario .view-3d {
+  width: calc(100vw - 40px);
+}
+
+@media (min-width: 850px) {
+  .combo-scenario {
+    display: flex;
+    justify-content: space-around;
+  }
+
+  .combo-scenario .view-3d {
+    width: calc(50vw - 20px);
+  }
+}
+
+@media (max-width: 850px) {
+  .combo-scenario .view-3d {
+    width: calc(100vw - 40px);
+  }
+}
+
+.field svg {
   /* border: solid black 1px; */
 }
 
@@ -24,9 +50,4 @@ textarea {
 
 .player.draggable {
   cursor: pointer;
-}
-
-a-scene {
-  height: 300px;
-  width: 600px;
 }
