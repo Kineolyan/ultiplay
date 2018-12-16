@@ -5,7 +5,7 @@ import { Reducer, StateSource } from 'cycle-onionify';
 import {Tab, getTabName} from './tab';
 import Scenario, {State as ScenarioState} from './scenario';
 import Pagination, * as pag from './pagination';
-import {updateItem} from '../state/operators';
+import {updateItem, updateItems} from '../state/operators';
 import {Tactic, TacticDisplay} from '../state/initial';
 import isolate from '../ext/re-isolate';
 
@@ -37,9 +37,10 @@ function Player(sources: Sources): Sinks<State> {
   const tabClick$ = sources.DOM.select('.tab').events('click')
     .map(e => parseInt(e.target.dataset['id']) as Tab);
   const tabReducer$: Stream<Reducer<State>> = tabClick$.map(tab => state => {
-    const display  = updateItem(
+    // Update all displays to the same view
+    const display  = updateItems(
       state.display,
-      state.tacticIdx,
+      () => true,
       display => ({...display, tab}));
     return {
       ...state,

@@ -4,6 +4,17 @@ function updateItem<T>(elements: T[], idx: number, f: (T) => T): T[] {
   return copy;
 }
 
+function updateItems<T>(elements: T[], predicate: (item: T, idx: number) => boolean, f: (T) => T): T[] {
+  const copy = elements.slice();
+  for (let i = 0; i < copy.length; i += 1) {
+    const item = elements[i];
+    if (predicate(item, i)) {
+      copy[i] = f(item);
+    }
+  }
+  return copy;
+}
+
 function moveItem<T>(elements: T[], from: number, to: number): T[] {
   if (from < to) {
     const copy = elements.slice();
@@ -44,6 +55,7 @@ function deleteItem<T>(elements: T[], item: number) {
 
 export {
   updateItem,
+  updateItems,
   moveItem,
   copyItem,
   deleteItem
