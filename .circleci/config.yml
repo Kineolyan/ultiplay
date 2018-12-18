@@ -41,6 +41,7 @@ jobs:
       - run:
           name: Commit to gh-pages
           command: |
+            git reset --hard HEAD
             git checkout origin/gh-pages
             git rm index.html src.* style.*
             cp dist/* .
