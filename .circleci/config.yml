@@ -48,7 +48,7 @@ jobs:
             git config user.email "kineolyan+circleci@gmail.com"
             git config user.name "CircleCI"
             git add .
-            git commit -m "Commit new website version."
+            git commit -m "Commit new website version (ref $CIRCLE_SHA1)"
             git push -q https://${GITHUB_PERSONAL_TOKEN}@github.com/Kineolyan/ultiplay.git gh-pages-test
 
 workflows:
