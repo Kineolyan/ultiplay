@@ -4,7 +4,7 @@
 #
 version: 2
 jobs:
-  build:
+  deploy:
     docker:
       # specify the version you desire here
       - image: circleci/node:10.14-jessie-browsers-legacy
@@ -25,12 +25,34 @@ jobs:
           - v1-dependencies-{{ checksum "package.json" }}
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
-
-      - run: yarn install
-
-      - run: yarn build
+            
+      - run:
+          name: Build the website
+          command: |
+            yarn install
+            yarn build
 
       - save_cache:
           paths:
             - node_modules
           key: v1-dependencies-{{ checksum "package.json" }}
+
+      # Clear the existing data
+      - run:
+          name: Commit to gh-pages
+          command: |
+            git checkout origin/gh-pages
+            git rm index.html src.* style.*
+            cp dist/* .
+            git add .
+            git commit -m "Commit new website version" --author="CircleCI <kineolyan+circleci@gmail.com>"
+            git push -q https://${GITHUB_PERSONAL_TOKEN}@github.com/Kineolyan/ultiplay.git gh-pages-test
+
+workflows:
+  version: 2
+  build-and-deploy:
+    jobs:
+      - deploy:
+          filters:
+            branches:
+              only: use-circle-ci
