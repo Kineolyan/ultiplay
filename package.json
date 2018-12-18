@@ -17,9 +17,9 @@
     "xstream": "^11.7.0"
   },
   "scripts": {
-    "start": "parcel index.html",
-    "build": "parcel build index.html",
-    "notebook": "parcel notebook.html",
-    "watch": "parcel serve --no-hmr index.html"
+    "start": "parcel index.html notebook.html",
+    "build": "parcel build --public-url . --out-dir dist index.html",
+    "watch": "parcel serve --no-hmr index.html",
+    "parcel": "parcel"
   }
 }

@@ -20,7 +20,7 @@
   version "3.3.0"
   resolved "https://registry.yarnpkg.com/@cycle/isolate/-/isolate-3.3.0.tgz#f23c9dfe0ac604240addf915693c4e78fef2fd28"
 
-"@cycle/run@*", "@cycle/run@4.0.0":
+"@cycle/run@*":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@cycle/run/-/run-4.0.0.tgz#d48c5133cd783afdf7f9e37ce1c158b570d6c5f1"
   integrity sha512-7cPVAFQMuOhV8qUO2AU2076opzy/7ldHsitP7EeZ22tOhd2GNsKf0TN52CZ6uVUh0cOySZs6e877aFm5Tw2+WA==
@@ -4391,7 +4391,7 @@ xmlbuilder@~9.0.1:
   version "9.0.7"
   resolved "https://registry.yarnpkg.com/xmlbuilder/-/xmlbuilder-9.0.7.tgz#132ee63d2ec5565c557e20f4c22df9aca686b10d"
 
-"xstream@10.x || 11.x", xstream@11.x, xstream@>=10, xstream@^11.7.0:
+xstream@*, "xstream@10.x || 11.x", xstream@>=10, xstream@^11.7.0:
   version "11.7.0"
   resolved "https://registry.yarnpkg.com/xstream/-/xstream-11.7.0.tgz#6557e9710e1ab05ae28b6902af41745250d32e36"
   integrity sha512-wO3TXiQd2/1UZNVsixDIcQgAN6TU4sGH7qIXvs1CRp1kgtkpU8YTfyKt/z/Z1psqcGnR0cJJxHaCnBxtktLx9w==
