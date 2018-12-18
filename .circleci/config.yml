@@ -42,14 +42,14 @@ jobs:
           name: Commit to gh-pages
           command: |
             git reset --hard HEAD
-            git checkout -t origin/gh-pages-test
+            git checkout -t origin/gh-pages
             git rm index.html src.* style.*
             cp dist/* .
             git config user.email "kineolyan+circleci@gmail.com"
             git config user.name "CircleCI"
             git add .
             git commit -m "Commit new website version (ref $CIRCLE_SHA1)"
-            git push -q https://${GITHUB_PERSONAL_TOKEN}@github.com/Kineolyan/ultiplay.git gh-pages-test
+            git push -q https://${GITHUB_PERSONAL_TOKEN}@github.com/Kineolyan/ultiplay.git gh-pages
 
 workflows:
   version: 2
@@ -58,4 +58,4 @@ workflows:
       - deploy:
           filters:
             branches:
-              only: use-circle-ci
+              only: master
