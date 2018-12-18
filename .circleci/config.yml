@@ -42,11 +42,13 @@ jobs:
           name: Commit to gh-pages
           command: |
             git reset --hard HEAD
-            git checkout origin/gh-pages
+            git checkout -t origin/gh-pages-test
             git rm index.html src.* style.*
             cp dist/* .
+            git config user.email "kineolyan+circleci@gmail.com"
+            git config user.name "CircleCI"
             git add .
-            git commit -m "Commit new website version" --author="CircleCI <kineolyan+circleci@gmail.com>"
+            git commit -m "Commit new website version."
             git push -q https://${GITHUB_PERSONAL_TOKEN}@github.com/Kineolyan/ultiplay.git gh-pages-test
 
 workflows:
