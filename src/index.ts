@@ -6,7 +6,7 @@ import 'aframe';
 import 'aframe-environment-component';
 
 import isolate from './ext/re-isolate';
-import {State, getInitialState, TacticDisplay, TacticDisplay, Tactic, Tactic} from './state/initial';
+import {State, getInitialState, TacticDisplay, TacticDisplay, Tactic, Tactic, View} from './state/initial';
 import Codec, {State as CodecState, Mode as CodecMode} from './components/codec';
 import Player, {State as PlayerState, Sinks as PlayerSinks} from './components/tactic-player';
 import Listing, {State as ListingState, Sinks as ListingSinks} from './components/tactic-list';
@@ -116,6 +116,14 @@ function main(sources: Sources): Sinks {
 
   const help = isolate<any, any, Sources, Sinks>(Help, 'showHelp')(sources);
 
+  const viewReducer$ = sources.DOM.select('.target-link').events('click')
+    .map(e => {
+      e.preventDefault();
+      e.stopPropagation();
+      return e['data-target'];
+    })
+    .map(view => state => ({...state, view}));
+
   const viewerReducer$ = xs.merge(
     sources.DOM.select('.player-view').events('click').mapTo('player'),
     sources.DOM.select('.listing-view').events('click').mapTo('listing'))
@@ -123,6 +131,7 @@ function main(sources: Sources): Sinks {
 
   const reducer$ = xs.merge(
     initialReducer$,
+    viewReducer$,
     codec.onion,
     xs.merge(
       player.onion,
@@ -140,7 +149,7 @@ function main(sources: Sources): Sinks {
       player.DOM,
       listing.DOM,
       help.DOM)
-    .map(([state, codec, player, listing, help]) => {
+    .map(([state, codec, player, listing, help, view]) => {
       const {mode, viewer} = state;
       const viewerToggle = div([
         button('.player-view', 'Player'),
@@ -149,11 +158,32 @@ function main(sources: Sources): Sinks {
         ? [viewerToggle, (viewer === 'listing' ? listing : player)]
         : null;
 
-      return div([
-        div('Small browser application to display Ultimate tactics in 3D'),
-        help,
+      const visibilityClass = '.uncover.visible';
+      const viewLinks: {target: View, label: string}[] = [
+        {target: 'tactics', label: 'Tactics'}, 
+        {target: 'codec', label: 'Import/Export'}, 
+        {target: 'help', label: 'Help'}
+      ];
+      const views = {
+        tactics: div(viewerDOM),
         codec,
-        ...viewerDOM
+        help
+      };
+
+      return div([
+        div(
+          `.ui.sidebar.inverted.vertical.labeled.icon.menu.left${visibilityClass}`, 
+          viewLinks.map(v => h(
+            'a', 
+            {attrs: {
+              class: 'item target-link', 
+              'data-target': v.target
+            }}, 
+            v.label))),
+        div('.pusher', [
+          div('Small browser application to display Ultimate tactics in 3D'),
+          views[view]
+        ])
       ]);
     })
     .replaceError(() => xs.of(div(`Internal error`)));
