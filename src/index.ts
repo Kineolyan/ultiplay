@@ -1,17 +1,18 @@
 import xs, {Stream} from 'xstream';
 import Cycle from '@cycle/xstream-run';
-import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
+import {h, div, button, makeDOMDriver, DOMSource, VNode} from '@cycle/dom';
 import onionify, { Reducer, StateSource } from 'cycle-onionify';
 import 'aframe';
 import 'aframe-environment-component';
 
 import isolate from './ext/re-isolate';
 import {State, getInitialState, TacticDisplay, Tactic, View} from './state/initial';
-import Codec, {State as CodecState, Mode as CodecMode} from './components/codec';
+import Codec, {State as CodecState} from './components/codec';
 import Player, {State as PlayerState, Sinks as PlayerSinks} from './components/tactic-player';
 import Listing, {State as ListingState, Sinks as ListingSinks} from './components/tactic-list';
 import {copyItem, moveItem, deleteItem} from './state/operators';
-import Help from './components/help';
+import Help, {Sources as HelpSources, Sinks as HelpSinks} from './components/help';
+import { composablePrint } from './operators/out';
 
 type Sources = {
   DOM: DOMSource,
@@ -114,13 +115,13 @@ function main(sources: Sources): Sinks {
       };
     });
 
-  const help = isolate<any, any, Sources, Sinks>(Help, 'showHelp')(sources);
+  const help = isolate<HelpSources, HelpSinks>(Help)(sources);
 
   const viewReducer$ = sources.DOM.select('.target-link').events('click')
     .map(e => {
       e.preventDefault();
       e.stopPropagation();
-      return (e.target.dataset.target as string);
+      return (e.currentTarget.dataset.target as string);
     })
     .map(view => state => ({...state, view}));
 
@@ -139,7 +140,6 @@ function main(sources: Sources): Sinks {
       copyReducer$,
       deleteReducer$),
     listing.onion,
-    help.onion,
     viewerReducer$);
 
   const state$ = sources.onion.state$;
@@ -159,17 +159,16 @@ function main(sources: Sources): Sinks {
         : null;
 
       const visibilityClass = '.uncover.visible';
-      const viewLinks: {target: View, label: string}[] = [
-        {target: 'tactics', label: 'Tactics'},
-        {target: 'codec', label: 'Import/Export'},
-        {target: 'help', label: 'Help'}
+      const viewLinks: {target: View, label: string, icon: string}[] = [
+        {target: 'tactics', label: 'Tactics', icon: 'book'},
+        {target: 'codec', label: 'Import/Export', icon: 'download'},
+        {target: 'help', label: 'Help', icon: 'question circle'}
       ];
       const views = {
         tactics: div(viewerDOM),
         codec,
         help
       };
-      debugger;
 
       return div([
         div(
@@ -177,10 +176,13 @@ function main(sources: Sources): Sinks {
           viewLinks.map(v => h(
             'a',
             {attrs: {
-              class: 'item target-link',
+              class: `item target-link ${v.target === view ? 'active' : ''}`,
               'data-target': v.target
             }},
-            v.label))),
+            [
+              h('i', {attrs: {class: `icon ${v.icon}`}}),
+              h('span', v.label)
+            ]))),
         div('.pusher', [
           div('Small browser application to display Ultimate tactics in 3D'),
           views[view]
