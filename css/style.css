@@ -2,6 +2,15 @@ body {
   margin: 10px;
 }
 
+/* Overrides */
+
+.ui.visible.left.sidebar~.pusher {
+  -webkit-transform: translate3d(120px, 0, 0);
+  transform: translate3d(120px, 0, 0);
+}
+
+/* Styles */
+
 .field {
   min-width: 350px;
 }
@@ -29,7 +38,8 @@ body {
 
 @media (max-width: 850px) {
   .combo-scenario .view-3d {
-    width: calc(100vw - 40px);
+    /* -100px for the menu + -50px for style */
+    width: calc(100vw - 150px);
   }
 }
 
