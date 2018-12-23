@@ -22,6 +22,7 @@ type State = {
   colors: string[],
   view: View,
   mode: CodecMode,
+  showHelp: boolean,
   viewer: 'listing' | 'player',
   tacticIdx: number,
   // Tactics
@@ -41,6 +42,7 @@ function getInitialV1State(state): State {
   return {
     view: 'tactics',
     mode: null,
+    showHelp: true,
     viewer: 'player',
     colors: [
       '#1f77b4',
@@ -61,6 +63,7 @@ function getInitialDevState(): State {
   return {
     view: 'tactics',
     mode: null,
+    showHelp: true,
     viewer: 'player',
     colors: [
       '#1f77b4',
@@ -102,6 +105,7 @@ function getDefaultInitialState(): State {
   return {
     view: 'tactics',
     mode: null,
+    showHelp: true,
     viewer: 'player',
     colors: [
       '#1f77b4',

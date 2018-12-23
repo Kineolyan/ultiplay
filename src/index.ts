@@ -6,7 +6,7 @@ import 'aframe';
 import 'aframe-environment-component';
 
 import isolate from './ext/re-isolate';
-import {State, getInitialState, TacticDisplay, TacticDisplay, Tactic, Tactic, View} from './state/initial';
+import {State, getInitialState, TacticDisplay, Tactic, View} from './state/initial';
 import Codec, {State as CodecState, Mode as CodecMode} from './components/codec';
 import Player, {State as PlayerState, Sinks as PlayerSinks} from './components/tactic-player';
 import Listing, {State as ListingState, Sinks as ListingSinks} from './components/tactic-list';
@@ -120,7 +120,7 @@ function main(sources: Sources): Sinks {
     .map(e => {
       e.preventDefault();
       e.stopPropagation();
-      return e['data-target'];
+      return (e.target.dataset.target as string);
     })
     .map(view => state => ({...state, view}));
 
@@ -131,7 +131,7 @@ function main(sources: Sources): Sinks {
 
   const reducer$ = xs.merge(
     initialReducer$,
-    // viewReducer$,
+    viewReducer$,
     codec.onion,
     xs.merge(
       player.onion,
@@ -169,6 +169,7 @@ function main(sources: Sources): Sinks {
         codec,
         help
       };
+      debugger;
 
       return div([
         div(
@@ -182,8 +183,7 @@ function main(sources: Sources): Sinks {
             v.label))),
         div('.pusher', [
           div('Small browser application to display Ultimate tactics in 3D'),
-          // views[view]
-          help
+          views[view]
         ])
       ]);
     })
