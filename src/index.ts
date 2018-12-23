@@ -131,7 +131,7 @@ function main(sources: Sources): Sinks {
 
   const reducer$ = xs.merge(
     initialReducer$,
-    viewReducer$,
+    // viewReducer$,
     codec.onion,
     xs.merge(
       player.onion,
@@ -149,8 +149,8 @@ function main(sources: Sources): Sinks {
       player.DOM,
       listing.DOM,
       help.DOM)
-    .map(([state, codec, player, listing, help, view]) => {
-      const {mode, viewer} = state;
+    .map(([state, codec, player, listing, help]) => {
+      const {mode, viewer, view} = state;
       const viewerToggle = div([
         button('.player-view', 'Player'),
         button('.listing-view', 'Listing')]);
@@ -160,8 +160,8 @@ function main(sources: Sources): Sinks {
 
       const visibilityClass = '.uncover.visible';
       const viewLinks: {target: View, label: string}[] = [
-        {target: 'tactics', label: 'Tactics'}, 
-        {target: 'codec', label: 'Import/Export'}, 
+        {target: 'tactics', label: 'Tactics'},
+        {target: 'codec', label: 'Import/Export'},
         {target: 'help', label: 'Help'}
       ];
       const views = {
@@ -172,17 +172,18 @@ function main(sources: Sources): Sinks {
 
       return div([
         div(
-          `.ui.sidebar.inverted.vertical.labeled.icon.menu.left${visibilityClass}`, 
+          `.ui.sidebar.inverted.vertical.labeled.icon.menu.left${visibilityClass}`,
           viewLinks.map(v => h(
-            'a', 
+            'a',
             {attrs: {
-              class: 'item target-link', 
+              class: 'item target-link',
               'data-target': v.target
-            }}, 
+            }},
             v.label))),
         div('.pusher', [
           div('Small browser application to display Ultimate tactics in 3D'),
-          views[view]
+          // views[view]
+          help
         ])
       ]);
     })
