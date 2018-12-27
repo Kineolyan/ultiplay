@@ -8,6 +8,7 @@ import Pagination, * as pag from './pagination';
 import {updateItem, updateItems} from '../state/operators';
 import {Tactic, TacticDisplay} from '../state/initial';
 import isolate from '../ext/re-isolate';
+import { errorView } from '../operators/errors';
 
 type State = {
   // Constants
@@ -131,7 +132,7 @@ function Player(sources: Sources): Sinks<State> {
         ...tabElements
       ]);
     })
-    .replaceError(() => xs.of(div(`Internal error in tactic player`)));
+    .replaceError(errorView('player'));
 
   return {
     DOM: vdom$,

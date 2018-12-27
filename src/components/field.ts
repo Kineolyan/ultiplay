@@ -7,6 +7,7 @@ import {createPlayer, generatePlayerId, PlayerId, Player} from './players';
 import {Button, ModeButtons, ModeState, ModeSinks} from './buttons';
 import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
+import { errorView } from '../operators/errors';
 
 // Dimension in decimeters
 const FIELD_WIDTH: number = 380;
@@ -425,7 +426,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 					...elementsOnSelected
 				]);
 		})
-		.replaceError(() => xs.of(div('Internal error in field')));
+		.replaceError(errorView('field'));
 
 	return {
 		DOM: vdom$,

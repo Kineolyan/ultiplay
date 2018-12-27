@@ -1,4 +1,5 @@
 import {h, div} from '@cycle/dom';
+import { errorView } from '../operators/errors';
 
 // In meters
 const FIELD_WIDTH: number = 38;
@@ -104,7 +105,7 @@ const Scene = (sources) => {
         [
           renderScene(state)
         ]))
-    .replaceError(() => div('Internal error in 3D vision'));
+    .replaceError(errorView('3d-scene');
 
   return {
     DOM: vdom$

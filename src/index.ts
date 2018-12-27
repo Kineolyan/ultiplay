@@ -13,6 +13,7 @@ import Listing, {State as ListingState, Sinks as ListingSinks} from './component
 import {copyItem, moveItem, deleteItem} from './state/operators';
 import Help, {Sources as HelpSources, Sinks as HelpSinks} from './components/help';
 import { composablePrint } from './operators/out';
+import { errorView } from './operators/errors';
 
 type Sources = {
   DOM: DOMSource,
@@ -189,7 +190,7 @@ function main(sources: Sources): Sinks {
         ])
       ]);
     })
-    .replaceError(() => xs.of(div(`Internal error`)));
+    .replaceError(errorView('main'));
 
   return {
     DOM: vdom$,

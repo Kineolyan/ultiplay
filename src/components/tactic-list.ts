@@ -7,6 +7,7 @@ import Scenario, {State as ScenarioState} from './scenario';
 import * as pag from './pagination';
 import {Tactic, TacticDisplay} from '../state/initial';
 import isolate from '../ext/re-isolate';
+import { errorView } from '../operators/errors';
 
 type State = {
   // Constants
@@ -147,7 +148,7 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
           : null
       ]);
     })
-    .replaceError(() => xs.of(div(`Internal error in tactic player`)));
+    .replaceError(errorView('tactic-player'));
 
   return {
     DOM: vdom$,
@@ -206,7 +207,7 @@ function Listing(sources: Sources<State>): Sinks<State> {
     .map(([state, list]) => {
       return div(list);
     })
-    .replaceError(() => xs.of(div(`Internal error in tactic list`)));
+    .replaceError(errorView('player-list'));
 
   return {
     DOM: vdom$,
