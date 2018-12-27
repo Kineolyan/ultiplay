@@ -200,11 +200,8 @@ function Listing(sources: Sources<State>): Sinks<State> {
   const reducer$ = xs.merge(
     list.onion);
 
-  const state$ = sources.onion.state$;
-  const vdom$ = xs.combine(
-      state$,
-      list.DOM)
-    .map(([state, list]) => {
+  const vdom$ = list.DOM
+    .map((list) => {
       return div(list);
     })
     .replaceError(errorView('player-list'));

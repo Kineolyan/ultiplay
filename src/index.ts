@@ -1,5 +1,5 @@
 import xs, {Stream} from 'xstream';
-import Cycle from '@cycle/xstream-run';
+import run from '@cycle/run';
 import {h, div, button, makeDOMDriver, DOMSource, VNode} from '@cycle/dom';
 import onionify, { Reducer, StateSource } from 'cycle-onionify';
 import 'aframe';
@@ -12,8 +12,8 @@ import Player, {State as PlayerState, Sinks as PlayerSinks} from './components/t
 import Listing, {State as ListingState, Sinks as ListingSinks} from './components/tactic-list';
 import {copyItem, moveItem, deleteItem} from './state/operators';
 import Help, {Sources as HelpSources, Sinks as HelpSinks} from './components/help';
-import { composablePrint } from './operators/out';
 import { errorView } from './operators/errors';
+import { composablePrint } from './operators/out';
 
 type Sources = {
   DOM: DOMSource,
@@ -35,7 +35,6 @@ const cloneDisplay: (TacticDisplay) => TacticDisplay = (display) => ({
 
 function main(sources: Sources): Sinks {
   const initialReducer$: Stream<Reducer<State>> = xs.of(() => getInitialState());
-  console.log('init')
 
   const codecLens = {
     get({tactics, mode}: State): CodecState {
@@ -55,8 +54,7 @@ function main(sources: Sources): Sinks {
       return newState;
     }
   };
-  // const codec = isolate(Codec, codecLens)(sources);
-  console.log('codec')
+  const codec = isolate(Codec, codecLens)(sources);
 
   const playerLens = {
     get(state: State): PlayerState {
@@ -66,8 +64,7 @@ function main(sources: Sources): Sinks {
       return {...state, ...childState};
     }
   };
-  // const player = isolate(Player, playerLens)(sources) as PlayerSinks<State>;
-  console.log('player')
+  const player = isolate(Player, playerLens)(sources) as PlayerSinks<State>;
 
   const listingLens = {
     get(state: State): ListingState {
@@ -77,50 +74,49 @@ function main(sources: Sources): Sinks {
       return {...state, ...childState};
     }
   };
-  // const listing = isolate(Listing, listingLens)(sources) as ListingSinks<State>;
-  console.log('listing')
+  const listing = isolate(Listing, listingLens)(sources) as ListingSinks<State>;
 
-  // const moveReducer$ = xs.merge(
-  //     player.moveItem,
-  //     listing.moveItem)
-  //   .map(({from, to}) => state => {
-  //     const tactics = moveItem(state.tactics, from, to);
-  //     const display = moveItem(state.display, from, to);
-  //     return {
-  //       ...state,
-  //       tacticIdx: to - 1,
-  //       tactics,
-  //       display
-  //     };
-  //   });
-  // const copyReducer$ = xs.merge(
-  //     player.copyItem,
-  //     listing.copyItem)
-  //   .map(({item, to}) => state => {
-  //     const tactics = copyItem(state.tactics, item, to, cloneTactic);
-  //     const display = copyItem(state.display, item, to, cloneDisplay);
-  //     return {
-  //       ...state,
-  //       tacticIdx: to - 1,
-  //       tactics,
-  //       display
-  //     };
-  //   });
-  // const deleteReducer$ = xs.merge(
-  //     player.deleteItem,
-  //     listing.deleteItem)
-  //   .map((idx) => state => {
-  //     const tactics = deleteItem(state.tactics, idx);
-  //     const display = deleteItem(state.display, idx);
-  //     return {
-  //       ...state,
-  //       tacticIdx: Math.min(idx, tactics.length) - 1,
-  //       tactics,
-  //       display
-  //     };
-  //   });
+  const moveReducer$ = xs.merge(
+      player.moveItem,
+      listing.moveItem)
+    .map(({from, to}) => state => {
+      const tactics = moveItem(state.tactics, from, to);
+      const display = moveItem(state.display, from, to);
+      return {
+        ...state,
+        tacticIdx: to - 1,
+        tactics,
+        display
+      };
+    });
+  const copyReducer$ = xs.merge(
+      player.copyItem,
+      listing.copyItem)
+    .map(({item, to}) => state => {
+      const tactics = copyItem(state.tactics, item, to, cloneTactic);
+      const display = copyItem(state.display, item, to, cloneDisplay);
+      return {
+        ...state,
+        tacticIdx: to - 1,
+        tactics,
+        display
+      };
+    });
+  const deleteReducer$ = xs.merge(
+      player.deleteItem,
+      listing.deleteItem)
+    .map((idx) => state => {
+      const tactics = deleteItem(state.tactics, idx);
+      const display = deleteItem(state.display, idx);
+      return {
+        ...state,
+        tacticIdx: Math.min(idx, tactics.length) - 1,
+        tactics,
+        display
+      };
+    });
 
-  // const help = isolate<HelpSources, HelpSinks>(Help)(sources);
+  const help = isolate<HelpSources, HelpSinks>(Help)(sources);
 
   const viewReducer$ = sources.DOM.select('.target-link').events('click')
     .map(e => {
@@ -129,48 +125,45 @@ function main(sources: Sources): Sinks {
       return (e.currentTarget.dataset.target as string);
     })
     .map(view => state => ({...state, view}));
-    console.log('view')
 
   const viewerReducer$ = xs.merge(
     sources.DOM.select('.player-view').events('click').mapTo('player'),
     sources.DOM.select('.listing-view').events('click').mapTo('listing'))
     .map(viewer => state => ({...state, viewer}));
-    console.log('viewer')
 
-  // const reducer$ = xs.merge(
-    // initialReducer$,
-    // viewReducer$,
-    // codec.onion,
-    // xs.merge(
-    //   player.onion,
-    //   moveReducer$,
-    //   copyReducer$,
-    //   deleteReducer$),
-    // listing.onion,
-    // viewerReducer$);
-  const reducer$ = initialReducer$;
-  console.log('reducer')
+  const reducer$ = xs.merge(
+    initialReducer$,
+    viewReducer$,
+    codec.onion,
+    xs.merge(
+      player.onion,
+      moveReducer$,
+      copyReducer$,
+      deleteReducer$),
+    listing.onion,
+    viewerReducer$);
 
-  const state$ = sources.onion.state$;
+  const state$ = sources.onion.state$
+    .compose(composablePrint('full-state'));
   const vdom$ = xs.combine(
       state$,
-      // codec.DOM,
-      xs.of(div('codec')),
-      // player.DOM,
-      xs.of(div('player')),
-      // listing.DOM,
-      xs.of(div('listing')),
-      xs.of(div('help')))
-      // help.DOM)
+      codec.DOM,
+      player.DOM,
+      listing.DOM,
+      help.DOM)
     .map(([state, codec, player, listing, help]) => {
-      return div('coucou');
-      const {mode, viewer, view} = state;
-      const viewerToggle = div([
-        button('.player-view.ui.button', 'Player'),
-        button('.listing-view.ui.button', 'Listing')]);
-      const viewerDOM = mode === null
-        ? [viewerToggle, (viewer === 'listing' ? listing : player)]
-        : null;
+      const {viewer, view} = state;
+      const viewerToggle = div(
+        '.ui.buttons',
+        [
+          div([
+            button('.player-view.ui.button', 'Player'),
+            button('.listing-view.ui.button', 'Listing')])
+        ]);
+      const viewerDOM = [
+        viewerToggle, 
+        (viewer === 'listing' ? listing : player)
+      ];
 
       const visibilityClass = '.uncover.visible';
       const viewLinks: {target: View, label: string, icon: string}[] = [
@@ -183,7 +176,6 @@ function main(sources: Sources): Sinks {
         codec,
         help
       };
-      console.log('rendering...')
 
       return div([
         div(
@@ -205,7 +197,6 @@ function main(sources: Sources): Sinks {
       ]);
     })
     .replaceError(errorView('main'));
-  console.log('dom')
 
   return {
     DOM: vdom$,
@@ -213,6 +204,6 @@ function main(sources: Sources): Sinks {
   };
 };
 
-Cycle.run(
+run(
   onionify(main),
   {DOM: makeDOMDriver('#app')});

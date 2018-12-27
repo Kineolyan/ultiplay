@@ -61,8 +61,8 @@ function getInitialV1State(state): State {
 
 function getInitialDevState(): State {
   return {
-    view: 'codec',
-    mode: 'export',
+    view: 'tactics',
+    mode: null,
     showHelp: true,
     viewer: 'player',
     colors: [
