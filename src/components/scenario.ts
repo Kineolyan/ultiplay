@@ -3,7 +3,7 @@ import {div, DOMSource, VNode} from '@cycle/dom';
 import { StateSource, Reducer } from 'cycle-onionify';
 
 import {Tab} from './tab';
-import {IncDecButtons} from './buttons';
+import {IncDecButtons, IncDecState} from './buttons';
 import {Scene} from './3d-vision';
 import {Field, State as FieldState} from './field';
 import {Player, PlayerId} from './players';
@@ -37,7 +37,15 @@ function Scenario(sources: Sources): Sinks {
       increment: 0.25,
       format: n => n.toFixed(2)
     }).remember();
-  const heightInc = isolate(IncDecButtons, 'height')({
+  const heightLens = {
+    get({height}: State): IncDecState {
+      return height;
+    },
+    set(state: State, height: IncDecState): State {
+      return {...state, height};
+    }
+  };
+  const heightInc = isolate(IncDecButtons, heightLens)({
    ...sources,
    props$: heightProps$
   }) as Sinks;
