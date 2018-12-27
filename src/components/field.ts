@@ -406,6 +406,9 @@ function Field(sources: Sources<State>): Sinks<State> {
 			const elementsOnSelected = selected
 				? [colors, deletePlayer, closeDOM]
 				: [];
+			const elts = Object.entries(elements)
+				.filter(([key, _]) => !isNaN(parseInt(key)))
+				.map(([_, dom]) => dom);
 
 			const {width, height} = fieldSize(fieldType);
 			return div(
@@ -421,7 +424,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 						}},
 						[
 							...drawField(),
-							...elements
+							...elts
 						]),
 					...elementsOnSelected
 				]);

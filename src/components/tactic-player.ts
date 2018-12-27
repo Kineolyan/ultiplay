@@ -35,7 +35,7 @@ const getTactic: (s: State) => Tactic = (state) => state.tactics[state.tacticIdx
 const getDisplay: (s: State) => TacticDisplay = (state) => state.display[state.tacticIdx];
 
 function Player(sources: Sources): Sinks<State> {
-  const tabClick$ = sources.DOM.select('.tab').events('click')
+  const tabClick$ = sources.DOM.select('.ui.button').events('click')
     .map(e => parseInt(e.target.dataset['id']) as Tab);
   const tabReducer$: Stream<Reducer<State>> = tabClick$.map(tab => state => {
     // Update all displays to the same view
@@ -119,16 +119,15 @@ function Player(sources: Sources): Sinks<State> {
       ].map(t => {
         const attrs = {
           'data-id': t,
-          class: 'tab',
-          style: tab === t ? 'font-weight: bold' : ''
+          class: `ui button ${tab === t ? 'active' : ''}`
         };
         const name = getTabName(t);
-        return h('li', {attrs}, name);
+        return h('button', {attrs}, name);
       });
 
       return div(
       [
-        h('ul', tabs),
+        div('.ui.buttons', tabs),
         ...tabElements
       ]);
     })

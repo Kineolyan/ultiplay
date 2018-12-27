@@ -48,7 +48,7 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
   const delete$ = clicks$('.delete');
   const copyAfter$ = clicks$('.copy-after');
 
-  const tabClick$ = clicks$('.tab')
+  const tabClick$ = clicks$('.ui.button.view-btn')
     .map(e => parseInt(e.target.dataset['id']) as Tab);
   const tabReducer$ = tabClick$.map(tab => (state: ItemState) => {
     const display = {...state.display, tab};
@@ -117,11 +117,10 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
       ].map(t => {
         const attrs = {
           'data-id': t,
-          class: 'tab',
-          style: tab === t ? 'font-weight: bold' : ''
+          class: `ui button view-btn ${tab === t ? 'active' : ''}`
         };
         const name = getTabName(t);
-        return h('li', {attrs}, name);
+        return h('button', {attrs}, name);
       });
 
       const deletAattrs = pages === 1
@@ -129,7 +128,7 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
         : {};
 
       return div([
-        h('ul', tabs),
+        h('div.ui.buttons', tabs),
         current > 1
           ? div([
               button('.move-prev', 'Move Previous')
@@ -197,12 +196,14 @@ function Listing(sources: Sources<State>): Sinks<State> {
   };
   const list = isolate(List, listLens)(sources) as Sinks<State>;
 
-  const reducer$ = xs.merge(
-    list.onion);
+  const reducer$ = list.onion;
 
   const vdom$ = list.DOM
     .map((list) => {
-      return div(list);
+      const elts = Object.entries(list)
+        .filter(([key, _]) => !isNaN(parseInt(key)))
+        .map(([_, dom]) => dom);
+      return div(elts);
     })
     .replaceError(errorView('player-list'));
 
