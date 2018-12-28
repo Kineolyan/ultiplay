@@ -7,13 +7,14 @@ import 'aframe-environment-component';
 
 import isolate from './ext/re-isolate';
 import {State, getInitialState, TacticDisplay, Tactic, View} from './state/initial';
-import Codec, {State as CodecState} from './components/codec';
+import Codec, {State as CodecState, Sources as CodecSources, Sinks as CodecSinks } from './components/codec';
 import Player, {State as PlayerState, Sinks as PlayerSinks} from './components/tactic-player';
 import Listing, {State as ListingState, Sinks as ListingSinks} from './components/tactic-list';
 import {copyItem, moveItem, deleteItem} from './state/operators';
 import Help, {Sources as HelpSources, Sinks as HelpSinks} from './components/help';
 import { errorView } from './operators/errors';
 import { composablePrint } from './operators/out';
+import makeIODriver, { IOAction } from './driver/io';
 
 type Sources = {
   DOM: DOMSource,
@@ -21,7 +22,8 @@ type Sources = {
 };
 type Sinks = {
   DOM: Stream<VNode>,
-  onion: Stream<Reducer<State>>
+  onion: Stream<Reducer<State>>,
+  io: Stream<IOAction>
 };
 
 const cloneTactic: (Tactic) => Tactic = ({height, description, points}) => ({
@@ -143,6 +145,8 @@ function main(sources: Sources): Sinks {
     listing.onion,
     viewerReducer$);
 
+  const io$ = codec.io;
+
   const state$ = sources.onion.state$
     .compose(composablePrint('full-state'));
   const vdom$ = xs.combine(
@@ -201,9 +205,12 @@ function main(sources: Sources): Sinks {
   return {
     DOM: vdom$,
     onion: reducer$,
+    io: io$
   };
 };
 
 run(
   onionify(main),
-  {DOM: makeDOMDriver('#app')});
+  {
+    DOM: makeDOMDriver('#app'),
+    io: makeIODriver()});
