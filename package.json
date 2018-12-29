@@ -10,11 +10,9 @@
   "dependencies": {
     "@cycle/dom": "22.3.0",
     "@cycle/isolate": "4.2.0",
-    "@cycle/run": "1.0.0",
     "aframe": "^0.8.2",
     "aframe-environment-component": "1.1.0",
-    "cycle-onionify": "^6.1.0",
-    "xstream": "^11.7.0"
+    "cycle-onionify": "^6.1.0"
   },
   "scripts": {
     "start": "parcel serve --no-hmr index.html notebook.html",

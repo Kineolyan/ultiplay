@@ -100,8 +100,9 @@ function CoDec(sources: Sources): Sinks {
         '#codec',
         [
           div([
-            button('.import', 'Import'),
-            button('.export', 'Export')
+            button('.ui.button.import', 'Import'),
+            button('.ui.button.export', 'Export'),
+            button('.ui.button.download', 'Download')
           ]),
           renderMode(state, editor)
         ]
