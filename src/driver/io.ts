@@ -7,35 +7,100 @@ type IOAction = {
   content: string
 };
 
-const keepNotebookElements = (node: HTMLElement) => {
+const forEachChild = (node: HTMLElement, action: (HTMLElement) => void | boolean) => {
   const children = node.children;
   let count = children.length;
   let i = 0;
   while (i < count) {
     const child = children[i];
-    if (child.dataset.notebook !== 'true') {
-      node.removeChild(child);
-      count -= 1;
-    } else {
+    if (action(child) === false) {
+      return false;
+    }
+    if (child === children[i]) {
       i += 1;
+    } else {
+      // Element removed, update the count
+      count -= 1;
     }
   }
+  return true;
+}
+
+const keepNotebookElements = (node: HTMLElement) => {
+  forEachChild(node, child => {
+    if (child.dataset.notebook !== 'true') {
+      node.removeChild(child);
+    }
+  });
 };
 
 const setNotebookScript = (body: HTMLBodyElement, script: string) => {
-  const children = body.children;
-  const count = children.length;
-  for (let i = 0; i < count; i += 1) {
-    const child = children[i];
+  forEachChild(body, child => {
     if (child.id === 'notebook-script') {
       child.textContent = script;
-      return;
+      return false;
     }
+  });
+};
+
+const computeBaseUrl = () => {
+  const url = window.location.href;
+  // Remove the index.html part if any
+  const match = /(.+)(?:\/index.html\?.+)/.exec(url);
+  if (match) {
+    // Ensure that it is truly at the end of the file
+    return match[1];
+  } else {
+    // Return the url as is
+    return url;
   }
 };
 
-const setupAbsoluteLinks = (header: HTMLHeadElement, body: HTMLBodyElement) => {
+const getBaseUrl = (() => {
+  let base = null;
+  return () => {
+    if (base === null) {
+      base = computeBaseUrl();
+    }
+    return base;
+  }
+})();
 
+const updateLink = (value: string | undefined, updateCbk: (string) => void) => {
+  if (value != null && !value.startsWith('http')) {
+    const base = getBaseUrl();
+    const updatedValue = `${base}/${value}`
+      // Remove potential duplicated double slashes
+      .replace(/(\w)\/\/(\w)/g, '$1/$2');
+    updateCbk(updatedValue);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+const turnLinkToAbsolute = (node: HTMLElement) => {
+  const href = node.getAttribute('href');
+  updateLink(href, newHref => node.setAttribute('href', newHref));
+
+  const src = node.getAttribute('src');
+  updateLink(src, newSrc => node.setAttribute('src', newSrc));
+}
+
+const setupAbsoluteLinks = (header: HTMLHeadElement, body: HTMLBodyElement) => {
+  forEachChild(header, turnLinkToAbsolute);
+  forEachChild(body, turnLinkToAbsolute);
+}
+
+const restoreAppElement = (body: HTMLBodyElement) => {
+  // Check that the element is not in the children list
+  const noDivApp = forEachChild(body, child => child.id !== 'app');
+  if (noDivApp) {
+    // The children do not include div#app
+    const appNode = document.createElement('div');
+    appNode.id = 'app';
+    body.insertBefore(appNode, body.firstChild);
+  }
 }
 
 const createNotebook = (script: string) => {
@@ -46,7 +111,7 @@ const createNotebook = (script: string) => {
   keepNotebookElements(body);
   setNotebookScript(body, script);
   setupAbsoluteLinks(header, body);
-  // TODO: restore div#app element
+  restoreAppElement(body);
 
   return notebook.outerHTML;
 }
@@ -54,21 +119,17 @@ const createNotebook = (script: string) => {
 const makeIODriver = () => (outgoing$: Stream<IOAction>) => {
   outgoing$.addListener({
     next: action => {
-      console.log('IO operation', action);
       if (action.operation === 'export') {
         const element = document.createElement('a');
-        try {
-          const content = createNotebook(action.content);
-          // console.log('generated notebook', content);
+        const content = createNotebook(action.content);
           element.setAttribute(
             'href',
             'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
           element.setAttribute('download', 'notebook.html');
-
           element.style.display = 'none';
-          document.body.appendChild(element);
 
-          // TODO: restore for download
+        try {
+          document.body.appendChild(element);
           element.click();
         } finally {
           document.body.removeChild(element);
@@ -77,13 +138,15 @@ const makeIODriver = () => (outgoing$: Stream<IOAction>) => {
         console.error('Unsupported operation received', action);
       }
     },
-    error: () => {},
+    error: (e) => {
+      console.error('Error while exporting a notebook', e);
+    },
     complete: () => {},
   });
 
   const incoming$: Stream<any> = xs.create({
     start: listener => {
-      console.log('No evetn are produced. Should not listen to IO');
+      console.log('No event are produced. Should not listen to IO');
       return null;
     },
     stop: () => {},
