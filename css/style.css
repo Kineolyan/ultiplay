@@ -23,6 +23,7 @@ body {
 
 .view-3d {
   height: calc(50vh - 20px);
+  min-height: 300px;
   min-width: 450px;
   max-width: 1000px;
 }
