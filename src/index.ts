@@ -7,7 +7,7 @@ import 'aframe-environment-component';
 
 import isolate from './ext/re-isolate';
 import {State, getInitialState, TacticDisplay, Tactic, View} from './state/initial';
-import Codec, {State as CodecState, Sources as CodecSources, Sinks as CodecSinks } from './components/codec';
+import Codec, {State as CodecState } from './components/codec';
 import Player, {State as PlayerState, Sinks as PlayerSinks} from './components/tactic-player';
 import Listing, {State as ListingState, Sinks as ListingSinks} from './components/tactic-list';
 import {copyItem, moveItem, deleteItem} from './state/operators';
@@ -128,6 +128,9 @@ function main(sources: Sources): Sinks {
     })
     .map(view => state => ({...state, view}));
 
+  const menuReducer$ = sources.DOM.select('.menu-handle').events('click')
+    .mapTo((state: State) => ({...state, showMenu: !state.showMenu}));
+
   const viewerReducer$ = xs.merge(
     sources.DOM.select('.player-view').events('click').mapTo('player'),
     sources.DOM.select('.listing-view').events('click').mapTo('listing'))
@@ -136,6 +139,7 @@ function main(sources: Sources): Sinks {
   const reducer$ = xs.merge(
     initialReducer$,
     viewReducer$,
+    menuReducer$,
     codec.onion,
     xs.merge(
       player.onion,
@@ -156,7 +160,7 @@ function main(sources: Sources): Sinks {
       listing.DOM,
       help.DOM)
     .map(([state, codec, player, listing, help]) => {
-      const {viewer, view} = state;
+      const {viewer, view, showMenu} = state;
       const viewerToggle = div(
         '.ui.buttons',
         [
@@ -165,11 +169,11 @@ function main(sources: Sources): Sinks {
             button('.listing-view.ui.button', 'Listing')])
         ]);
       const viewerDOM = [
-        viewerToggle, 
+        viewerToggle,
         (viewer === 'listing' ? listing : player)
       ];
 
-      const visibilityClass = '.uncover.visible';
+      const visibilityClass = showMenu ? '.uncover.visible' : '';
       const viewLinks: {target: View, label: string, icon: string}[] = [
         {target: 'tactics', label: 'Tactics', icon: 'book'},
         {target: 'codec', label: 'Import/Export', icon: 'download'},
@@ -195,6 +199,8 @@ function main(sources: Sources): Sinks {
               h('span', v.label)
             ]))),
         div('.pusher', [
+          button('.ui.secondary.right.attached.menu-handle.icon.button', [
+            h('i.list.icon')]),
           div('Small browser application to display Ultimate tactics in 3D'),
           views[view]
         ])

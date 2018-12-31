@@ -11,6 +11,12 @@ body {
 
 /* Styles */
 
+.menu-handle {
+  position: fixed;
+  top: -10px;
+  left: -10px;
+}
+
 .field {
   min-width: 350px;
 }
