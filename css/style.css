@@ -2,12 +2,28 @@ body {
   margin: 10px;
 }
 
+/* Overrides */
+
+.ui.visible.left.sidebar~.pusher {
+  -webkit-transform: translate3d(120px, 0, 0);
+  transform: translate3d(120px, 0, 0);
+}
+
+/* Styles */
+
+.menu-handle {
+  position: fixed;
+  top: -10px;
+  left: -10px;
+}
+
 .field {
   min-width: 350px;
 }
 
 .view-3d {
   height: calc(50vh - 20px);
+  min-height: 300px;
   min-width: 450px;
   max-width: 1000px;
 }
@@ -29,7 +45,8 @@ body {
 
 @media (max-width: 850px) {
   .combo-scenario .view-3d {
-    width: calc(100vw - 40px);
+    /* -100px for the menu + -50px for style */
+    width: calc(100vw - 150px);
   }
 }
 

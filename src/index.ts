@@ -1,17 +1,20 @@
 import xs, {Stream} from 'xstream';
-import Cycle from '@cycle/xstream-run';
-import {h, div, span, button, makeDOMDriver, i, table, DOMSource, VNode} from '@cycle/dom';
+import run from '@cycle/run';
+import {h, div, button, makeDOMDriver, DOMSource, VNode} from '@cycle/dom';
 import onionify, { Reducer, StateSource } from 'cycle-onionify';
 import 'aframe';
 import 'aframe-environment-component';
 
 import isolate from './ext/re-isolate';
-import {State, getInitialState, TacticDisplay, TacticDisplay, Tactic, Tactic} from './state/initial';
-import Codec, {State as CodecState, Mode as CodecMode} from './components/codec';
+import {State, getInitialState, TacticDisplay, Tactic, View} from './state/initial';
+import Codec, {State as CodecState } from './components/codec';
 import Player, {State as PlayerState, Sinks as PlayerSinks} from './components/tactic-player';
 import Listing, {State as ListingState, Sinks as ListingSinks} from './components/tactic-list';
 import {copyItem, moveItem, deleteItem} from './state/operators';
-import Help from './components/help';
+import Help, {Sources as HelpSources, Sinks as HelpSinks} from './components/help';
+import { errorView } from './operators/errors';
+import { composablePrint } from './operators/out';
+import makeIODriver, { IOAction } from './driver/io';
 
 type Sources = {
   DOM: DOMSource,
@@ -19,7 +22,8 @@ type Sources = {
 };
 type Sinks = {
   DOM: Stream<VNode>,
-  onion: Stream<Reducer<State>>
+  onion: Stream<Reducer<State>>,
+  io: Stream<IOAction>
 };
 
 const cloneTactic: (Tactic) => Tactic = ({height, description, points}) => ({
@@ -114,7 +118,18 @@ function main(sources: Sources): Sinks {
       };
     });
 
-  const help = isolate<any, any, Sources, Sinks>(Help, 'showHelp')(sources);
+  const help = isolate<HelpSources, HelpSinks>(Help)(sources);
+
+  const viewReducer$ = sources.DOM.select('.target-link').events('click')
+    .map(e => {
+      e.preventDefault();
+      e.stopPropagation();
+      return (e.currentTarget.dataset.target as string);
+    })
+    .map(view => state => ({...state, view}));
+
+  const menuReducer$ = sources.DOM.select('.menu-handle').events('click')
+    .mapTo((state: State) => ({...state, showMenu: !state.showMenu}));
 
   const viewerReducer$ = xs.merge(
     sources.DOM.select('.player-view').events('click').mapTo('player'),
@@ -123,6 +138,8 @@ function main(sources: Sources): Sinks {
 
   const reducer$ = xs.merge(
     initialReducer$,
+    viewReducer$,
+    menuReducer$,
     codec.onion,
     xs.merge(
       player.onion,
@@ -130,10 +147,12 @@ function main(sources: Sources): Sinks {
       copyReducer$,
       deleteReducer$),
     listing.onion,
-    help.onion,
     viewerReducer$);
 
-  const state$ = sources.onion.state$;
+  const io$ = codec.io;
+
+  const state$ = sources.onion.state$
+    .compose(composablePrint('full-state'));
   const vdom$ = xs.combine(
       state$,
       codec.DOM,
@@ -141,29 +160,63 @@ function main(sources: Sources): Sinks {
       listing.DOM,
       help.DOM)
     .map(([state, codec, player, listing, help]) => {
-      const {mode, viewer} = state;
-      const viewerToggle = div([
-        button('.player-view', 'Player'),
-        button('.listing-view', 'Listing')]);
-      const viewerDOM = mode === null
-        ? [viewerToggle, (viewer === 'listing' ? listing : player)]
-        : null;
+      const {viewer, view, showMenu} = state;
+      const viewerToggle = div(
+        '.ui.buttons',
+        [
+          div([
+            button('.player-view.ui.button', 'Player'),
+            button('.listing-view.ui.button', 'Listing')])
+        ]);
+      const viewerDOM = [
+        viewerToggle,
+        (viewer === 'listing' ? listing : player)
+      ];
+
+      const visibilityClass = showMenu ? '.uncover.visible' : '';
+      const viewLinks: {target: View, label: string, icon: string}[] = [
+        {target: 'tactics', label: 'Tactics', icon: 'book'},
+        {target: 'codec', label: 'Import/Export', icon: 'download'},
+        {target: 'help', label: 'Help', icon: 'question circle'}
+      ];
+      const views = {
+        tactics: div(viewerDOM),
+        codec,
+        help
+      };
 
       return div([
-        div('Small browser application to display Ultimate tactics in 3D'),
-        help,
-        codec,
-        ...viewerDOM
+        div(
+          `.ui.sidebar.inverted.vertical.labeled.icon.menu.left${visibilityClass}`,
+          viewLinks.map(v => h(
+            'a',
+            {attrs: {
+              class: `item target-link ${v.target === view ? 'active' : ''}`,
+              'data-target': v.target
+            }},
+            [
+              h('i', {attrs: {class: `icon ${v.icon}`}}),
+              h('span', v.label)
+            ]))),
+        div('.pusher', [
+          button('.ui.secondary.right.attached.menu-handle.icon.button', [
+            h('i.list.icon')]),
+          div('Small browser application to display Ultimate tactics in 3D'),
+          views[view]
+        ])
       ]);
     })
-    .replaceError(() => xs.of(div(`Internal error`)));
+    .replaceError(errorView('main'));
 
   return {
     DOM: vdom$,
     onion: reducer$,
+    io: io$
   };
 };
 
-Cycle.run(
+run(
   onionify(main),
-  {DOM: makeDOMDriver('#app')});
+  {
+    DOM: makeDOMDriver('#app'),
+    io: makeIODriver()});

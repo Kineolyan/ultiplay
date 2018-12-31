@@ -20,10 +20,9 @@ function Button(sources: ButtonSources): ButtonSinks {
   let props$ = sources.props$;
   const click$ = sources.DOM.select('.button').events('click');
 	const vdom$ = props$.map(({text, disabled}) => {
-    const attrs = disabled === true
-      ? {attrs: {disabled: ''}}
-      : {};
-    return button('.button', attrs, [text]);
+    return button(
+      `.ui.button${disabled ? '.active' : ''}`,
+      [text]);
   });
 
 	return {
@@ -61,7 +60,7 @@ function IncDecButtons(sources: IncDecSources): IncDecSinks {
 	const decrementButtonProps$ = props$
     .map(({decLabel}) => ({text: decLabel || '-'}));
   const decrementButton = DecrementButton({DOM: sources.DOM, props$: decrementButtonProps$});
-  
+
   const delta$: Stream<number> = props$
     .map(({increment}) => {
       const value = increment || 1;
@@ -100,6 +99,7 @@ type ModeSinks<S> = {
   DOM: Stream<VNode>,
   onion: Stream<Reducer<S>>
 };
+
 function ModeButtons({DOM: dom$, onion: {state$}}: ModeSources<ModeState>): ModeSinks<ModeState> {
 	const btn = (label, disabled) => {
     const Btn = isolate(Button);
@@ -121,7 +121,10 @@ function ModeButtons({DOM: dom$, onion: {state$}}: ModeSources<ModeState>): Mode
   const vdom$ = modeButtons
     .map(buttons => {
       return xs.combine(...buttons.map(b => b.DOM))
-        .map(elts => div(elts));
+        .map(elts => div(
+          '.ui.buttons',
+          {attrs: {style: 'display: block;'}},
+          elts));
     })
     .flatten();
   const reducer$ = modeButtons

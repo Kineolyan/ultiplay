@@ -7,6 +7,7 @@ import {createPlayer, generatePlayerId, PlayerId, Player} from './players';
 import {Button, ModeButtons, ModeState, ModeSinks} from './buttons';
 import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
+import { errorView } from '../operators/errors';
 
 // Dimension in decimeters
 const FIELD_WIDTH: number = 380;
@@ -405,6 +406,9 @@ function Field(sources: Sources<State>): Sinks<State> {
 			const elementsOnSelected = selected
 				? [colors, deletePlayer, closeDOM]
 				: [];
+			const elts = Object.entries(elements)
+				.filter(([key, _]) => !isNaN(parseInt(key)))
+				.map(([_, dom]) => dom);
 
 			const {width, height} = fieldSize(fieldType);
 			return div(
@@ -420,12 +424,12 @@ function Field(sources: Sources<State>): Sinks<State> {
 						}},
 						[
 							...drawField(),
-							...elements
+							...elts
 						]),
 					...elementsOnSelected
 				]);
 		})
-		.replaceError(() => xs.of(div('Internal error in field')));
+		.replaceError(errorView('field'));
 
 	return {
 		DOM: vdom$,
