@@ -1,6 +1,5 @@
 import xs, { Stream } from 'xstream';
-import debounce from 'xstream/extra/debounce';
-import {h, div, button, textarea, sub, DOMSource, VNode} from '@cycle/dom';
+import {h, div, button, i, DOMSource, VNode} from '@cycle/dom';
 import { StateSource, Reducer } from 'cycle-onionify';
 
 import {trigger} from '../operators/trigger';
@@ -100,9 +99,15 @@ function CoDec(sources: Sources): Sinks {
         '#codec',
         [
           div([
-            button('.ui.button.import', 'Import'),
-            button('.ui.button.export', 'Export'),
-            button('.ui.button.download', 'Download')
+            button('.ui.primary.button.download', [
+              i('.download.icon'),
+              'Download']),
+            button('.ui.button.import', [
+              i('.play.circle.icon'),
+              'Import']),
+            button('.ui.button.export', [
+              i('.save.icon'),
+              'Export'])
           ]),
           renderMode(state, editor)
         ]
