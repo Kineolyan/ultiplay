@@ -8,6 +8,8 @@ import {Button, ModeButtons, ModeState, ModeSinks} from './buttons';
 import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
 import { errorView } from '../operators/errors';
+import onMobile from '../ext/mobile-detection';
+import {printStream} from '../operators/out';
 
 // Dimension in decimeters
 const FIELD_WIDTH: number = 380;
@@ -214,41 +216,38 @@ const fieldSize: (FieldType) => {width: number, height: number} = (type) => {
 	}
 };
 
-type State = {
-	colors: string[],
-	selected: PlayerId,
-	fieldType: FieldType,
-	points: Player[]
+type EventKey = keyof HTMLElementEventMap;
+type EventSpec = {
+	start: EventKey,
+	end: EventKey,
+	move: EventKey,
+	exit: EventKey,
+	doubleClick: EventKey
 };
-type Sources<S> = {
-	DOM: DOMSource,
-	onion: StateSource<S>
+type MoveStreams = {
+	start: Stream<any>,
+	end: Stream<any>,
+	initial: Stream<{element: any, offset: Position}>,
+	current: Stream<Position>,
+	dblClick: Stream<Position>
 };
-type Sinks<S> = {
-	DOM: Stream<VNode>,
-	onion: Stream<Reducer<S>>
-};
-function Field(sources: Sources<State>): Sinks<State> {
-	const svg$ = sources.DOM.select('svg');
-	const startDrag$ = svg$.events('mousedown')
+
+const moveStreams = (dom$: DOMSource, events: EventSpec): MoveStreams => {
+	const svg$ = dom$.select('svg');
+	const startDrag$ = svg$.events(events.start)
+		.debug('start')
 		.compose(onDraggable);
-	const onDrag$ = svg$.events('mousemove');
+
+	const onDrag$ = svg$.events(events.move)
+		// .debug('move');
 	const endDrag$ = xs.merge(
-			svg$.events('mouseup'),
-			svg$.events('mouseleave').debug('leave'));
-	const dblClick$ = svg$.events('dblclick')
+			svg$.events(events.end).debug('end'),
+			svg$.events(events.exit).debug('leave'));
+	const dblClick$ = svg$.events(events.doubleClick)
 		.map(e => {
 			e.preventDefault();
 			const position = getMousePosition(e.ownerTarget, e);
 			return fromField(position);
-		});
-	const newPlayerReducer$ = dblClick$.map(
-		position => (state: State) => {
-			const points = state.points.slice();
-			const id =  generatePlayerId(points);
-			points.push(
-				createPlayer({...position, id}));
-			return {...state, points, selected: id};
 		});
 
 	const basePosition$ = startDrag$.map(e => {
@@ -267,6 +266,70 @@ function Field(sources: Sources<State>): Sinks<State> {
 	});
 	// FIXME always force a listener for the svg position (to be able to use endWhen)
 	svgPosition$.addListener({});
+
+	printStream(dom$.select('.draggable').events('click'), 'point click');
+
+	return {
+		start: startDrag$,
+		end: endDrag$,
+		initial: basePosition$,
+		current: svgPosition$,
+		dblClick: dblClick$
+	};
+}
+const multiMoveStream = (dom$: DOMSource): MoveStreams => {
+	return onMobile
+		? moveStreams(
+				dom$,
+				{
+					start: 'touchstart',
+					end: 'touchend',
+					move: 'touchmove',
+					exit: 'touchcancel',
+					doubleClick: 'dblclick'
+				})
+		: moveStreams(
+				dom$,
+				{
+					start: 'mousedown',
+					end: 'mouseup',
+					move: 'mousemove',
+					exit: 'mouseleave',
+					doubleClick: 'dblclick'
+				});
+}
+
+type State = {
+	colors: string[],
+	selected: PlayerId,
+	fieldType: FieldType,
+	points: Player[]
+};
+type Sources<S> = {
+	DOM: DOMSource,
+	onion: StateSource<S>
+};
+type Sinks<S> = {
+	DOM: Stream<VNode>,
+	onion: Stream<Reducer<S>>
+};
+function Field(sources: Sources<State>): Sinks<State> {
+	const {
+		start: startDrag$,
+		end: endDrag$,
+		initial: basePosition$,
+		current: svgPosition$,
+		dblClick: dblClick$
+	} = multiMoveStream(sources.DOM);
+
+	const newPlayerReducer$ = dblClick$.map(
+		position => (state: State) => {
+			const points = state.points.slice();
+			const id =  generatePlayerId(points);
+			points.push(
+				createPlayer({...position, id}));
+			return {...state, points, selected: id};
+		});
 
 	const position$ = basePosition$
 		.map(({element, offset}) => {
