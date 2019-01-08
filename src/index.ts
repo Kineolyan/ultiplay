@@ -15,6 +15,7 @@ import Help, {Sources as HelpSources, Sinks as HelpSinks} from './components/hel
 import { errorView } from './operators/errors';
 import { composablePrint } from './operators/out';
 import makeIODriver, { IOAction } from './driver/io';
+import makeCanvasDriver, { CanvasDescription } from './driver/canvas';
 
 type Sources = {
   DOM: DOMSource,
@@ -23,7 +24,8 @@ type Sources = {
 type Sinks = {
   DOM: Stream<VNode>,
   onion: Stream<Reducer<State>>,
-  io: Stream<IOAction>
+  io: Stream<IOAction>,
+  canvas: Stream<CanvasDescription>
 };
 
 const cloneTactic: (Tactic) => Tactic = ({height, description, points}) => ({
@@ -151,6 +153,8 @@ function main(sources: Sources): Sinks {
 
   const io$ = codec.io;
 
+  const canvas$ = player.canvas;
+
   const state$ = sources.onion.state$
     .compose(composablePrint('full-state'));
   const vdom$ = xs.combine(
@@ -211,7 +215,8 @@ function main(sources: Sources): Sinks {
   return {
     DOM: vdom$,
     onion: reducer$,
-    io: io$
+    io: io$,
+    canvas: canvas$
   };
 };
 
@@ -219,4 +224,6 @@ run(
   onionify(main),
   {
     DOM: makeDOMDriver('#app'),
-    io: makeIODriver()});
+    io: makeIODriver(),
+    canvas: makeCanvasDriver()
+  });

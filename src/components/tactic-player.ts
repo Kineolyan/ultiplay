@@ -9,6 +9,7 @@ import {updateItem, updateItems} from '../state/operators';
 import {Tactic, TacticDisplay} from '../state/initial';
 import isolate from '../ext/re-isolate';
 import { errorView } from '../operators/errors';
+import { CanvasDescription } from '../driver/canvas';
 
 type State = {
   // Constants
@@ -26,6 +27,7 @@ type Sources = {
 type Sinks<S> = {
   DOM: Stream<VNode>,
   onion: Stream<Reducer<S>>,
+  canvas: Stream<CanvasDescription>,
   moveItem: Stream<pag.MoveRequest>,
   copyItem: Stream<pag.CopyRequest>,
   deleteItem: Stream<number>
@@ -93,6 +95,8 @@ function Player(sources: Sources): Sinks<State> {
     tabReducer$,
     scenario.onion,
     pagination.onion);
+  
+  const canvas$ = scenario.canvas;
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
@@ -136,6 +140,7 @@ function Player(sources: Sources): Sinks<State> {
   return {
     DOM: vdom$,
     onion: reducer$,
+    canvas: canvas$,
     moveItem: pagination.moveItem,
     copyItem: pagination.copyItem,
     deleteItem: pagination.deleteItem

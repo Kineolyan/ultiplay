@@ -8,6 +8,7 @@ import {Button, ModeButtons, ModeState, ModeSinks} from './buttons';
 import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
 import { errorView } from '../operators/errors';
+import { CanvasDescription, Drawing } from '../driver/canvas';
 
 // Dimension in decimeters
 const FIELD_WIDTH: number = 380;
@@ -73,7 +74,8 @@ type PointSources<S> = {
 	onion: StateSource<S>
 };
 type PointSinks<E> = {
-	DOM: Stream<E>
+	// DOM: Stream<E>,
+	point: Stream<E>
 };
 
 function updatePlayerState(state: State, value: PointState): State {
@@ -101,21 +103,34 @@ const makePoint = point => {
 	}});
 };
 
-function Point(sources: PointSources<PointItemState>): PointSinks<VNode> {
-	const state$ = sources.onion.state$;
-	const vdom$ = state$.map(makePoint);
+const drawPoint = point => {
+	const {x, y} = toField(point);
 	return {
-		DOM: vdom$
+		x,
+		y,
+		radius: 17,
+		color: point.color
 	};
 };
 
-function Points(sources: PointSources<PointItemState[]>): PointSinks<VNode[]> {
+function Point(sources: PointSources<PointItemState>): PointSinks<Drawing> {
+	const state$ = sources.onion.state$;
+	const vdom$ = state$.map(makePoint);
+	const point$ = state$.map(drawPoint);
+	return {
+		// DOM: vdom$,
+		point: point$
+	};
+};
+
+function Points(sources: PointSources<PointItemState[]>): PointSinks<Drawing[]> {
 	const PointCollection = makeCollection({
 		item: Point,
 		itemKey: (point: PointItemState, index) => `${point.id}`,
 		itemScope: key => key,
 		collectSinks: instances => ({
-			DOM: instances.pickCombine('DOM')
+			// DOM: instances.pickCombine('DOM')
+			point: instances.pickCombine('point')
 		})
 	});
 	return PointCollection(sources);
@@ -226,7 +241,8 @@ type Sources<S> = {
 };
 type Sinks<S> = {
 	DOM: Stream<VNode>,
-	onion: Stream<Reducer<S>>
+	onion: Stream<Reducer<S>>,
+	canvas: Stream<CanvasDescription>
 };
 function Field(sources: Sources<State>): Sinks<State> {
 	const svg$ = sources.DOM.select('svg');
@@ -315,7 +331,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 			return state; // No change
 		}
 	};
-	const points = isolate(Points, pointsLens)(sources) as PointSinks<VNode[]>;
+	const points = isolate(Points, pointsLens)(sources) as PointSinks<Drawing[]>;
 	const selectedReducer$ = startDrag$
 		.map(e => parseInt(e.target.dataset['id']))
 		.map(id => (state: State) => Object.assign({}, state, {selected: id}));
@@ -393,22 +409,29 @@ function Field(sources: Sources<State>): Sinks<State> {
 		deletePlayerReducer$,
 		closeReducer$);
 
+	const canvas$ = points.point.map(ps => ({
+		id: 'field-canvas',
+		drawings: Object.entries(ps)
+			.filter(([key, _]) => !isNaN(parseInt(key)))
+			.map(([_, p]) => p)
+	}));
+
 	const state$ = sources.onion.state$;
 	const vdom$ = xs.combine(
 			state$,
-			points.DOM,
+			// points.DOM,
 			colors.DOM,
 			modes.DOM,
 			deletePlayer.DOM,
 			closeButton.DOM,
 			pointMove$.startWith(null))
-		.map(([{selected, fieldType}, elements, colors, modes, deletePlayer, closeDOM]) => {
+		.map(([{selected, fieldType}/*, elements*/, colors, modes, deletePlayer, closeDOM]) => {
 			const elementsOnSelected = selected
 				? [colors, deletePlayer, closeDOM]
 				: [];
-			const elts = Object.entries(elements)
-				.filter(([key, _]) => !isNaN(parseInt(key)))
-				.map(([_, dom]) => dom);
+			// const elts = Object.entries(elements)
+			// 	.filter(([key, _]) => !isNaN(parseInt(key)))
+			// 	.map(([_, dom]) => dom);
 
 			const {width, height} = fieldSize(fieldType);
 			return div(
@@ -416,16 +439,25 @@ function Field(sources: Sources<State>): Sinks<State> {
 				[
 					modes,
 					h(
-						'svg',
-						{attrs: {
-							width,
-							height,
-							viewBox: fieldViewPort(fieldType)
-						}},
-						[
-							...drawField(),
-							...elts
-						]),
+						'canvas',
+						{
+							attrs:{
+								id: 'field-canvas',
+								width,
+								height
+							}
+						}),
+					// h(
+					// 	'svg',
+					// 	{attrs: {
+					// 		width,
+					// 		height,
+					// 		viewBox: fieldViewPort(fieldType)
+					// 	}},
+					// 	[
+					// 		...drawField(),
+					// 		...elts
+					// 	]),
 					...elementsOnSelected
 				]);
 		})
@@ -433,7 +465,8 @@ function Field(sources: Sources<State>): Sinks<State> {
 
 	return {
 		DOM: vdom$,
-		onion: reducer$
+		onion: reducer$,
+		canvas: canvas$
 	};
 }
 

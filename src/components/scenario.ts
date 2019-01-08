@@ -5,11 +5,12 @@ import { StateSource, Reducer } from 'cycle-onionify';
 import {Tab} from './tab';
 import {IncDecButtons, IncDecState} from './buttons';
 import {Scene} from './3d-vision';
-import {Field, State as FieldState} from './field';
+import {Field, State as FieldState, Sources as FieldSources, Sinks as FieldSinks} from './field';
 import {Player, PlayerId} from './players';
 import Description from './description';
 import isolate from '../ext/re-isolate';
 import { FieldType } from '../state/initial';
+import { CanvasDescription } from '../driver/canvas';
 
 type State = {
   colors: string[],
@@ -28,7 +29,8 @@ type Sources = {
 };
 type Sinks = {
   DOM: Stream<VNode>,
-  onion: Stream<Reducer<State>>
+  onion: Stream<Reducer<State>>,
+  canvas: Stream<CanvasDescription>
 };
 
 function Scenario(sources: Sources): Sinks {
@@ -68,7 +70,13 @@ function Scenario(sources: Sources): Sinks {
       };
     }
   };
-  const field = isolate(Field, fieldLens)(sources);
+  const field = isolate<
+    FieldSources<FieldState>, 
+    FieldSinks<FieldState>, 
+    FieldState,
+    State,
+    FieldSources<State>,
+    FieldSinks<State>>(Field, fieldLens)(sources);
 
   const sceneLens = {
     get({height, points, colors}) {
@@ -88,6 +96,8 @@ function Scenario(sources: Sources): Sinks {
     heightInc.onion,
     field.onion,
     description.onion);
+
+  const canvas$ = field.canvas;
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
@@ -127,6 +137,7 @@ function Scenario(sources: Sources): Sinks {
   return {
     DOM: vdom$,
     onion: reducer$,
+    canvas: canvas$
   };
 };
 
