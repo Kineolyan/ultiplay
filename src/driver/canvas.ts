@@ -1,5 +1,6 @@
 import xs, {Stream} from 'xstream';
 import {adapt} from '@cycle/run/lib/adapt';
+import { canvas } from '@cycle/dom';
 
 type Rect = {
 
@@ -21,6 +22,10 @@ function isCircle(d: Drawing): d is Circle {
   return (d as Circle).radius !== undefined;
 }
 
+const clearCanvas = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
+
 const drawCanvas = (ctx: CanvasRenderingContext2D, actions: Drawing[]) => {
   actions.forEach(d => {
     if (isCircle(d)) {
@@ -41,6 +46,7 @@ const makeCanvasDriver = () => (outgoing$: Stream<CanvasDescription>): Stream<an
       if (element && element.nodeName === 'CANVAS') {
         const canvas = element as HTMLCanvasElement;
         const ctx = canvas.getContext('2d');
+        clearCanvas(canvas, ctx);
         drawCanvas(ctx, drawings);
       } else {
         // Retry a bit later

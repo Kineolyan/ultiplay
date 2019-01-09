@@ -8,7 +8,8 @@ import {Button, ModeButtons, ModeState, ModeSinks} from './buttons';
 import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
 import { errorView } from '../operators/errors';
-import { CanvasDescription, Drawing } from '../driver/canvas';
+import { CanvasDescription, Drawing, Circle } from '../driver/canvas';
+import { composablePrint } from '../operators/out';
 
 // Dimension in decimeters
 const FIELD_WIDTH: number = 380;
@@ -52,6 +53,12 @@ function getMousePosition(svg, evt) {
 	};
 }
 
+type ViewPort = {
+	x: number, 
+	y: number,
+	height: number,
+	width: number
+};
 type Position = {
 	x: number,
 	y: number
@@ -67,7 +74,8 @@ type PointItemState = {
 	x: number,
 	y: number,
 	color: string,
-	selected: boolean
+	selected: boolean,
+	fieldType: FieldType
 };
 type PointSources<S> = {
 	DOM: DOMSource,
@@ -103,27 +111,51 @@ const makePoint = point => {
 	}});
 };
 
-const drawPoint = point => {
-	const {x, y} = toField(point);
+const toViewPort = (viewport: ViewPort, point: PointItemState): PointItemState | null => {
+	const {x, y} = toField({
+		x: point.x - viewport.x,
+		y: point.y - viewport.y
+	});
+	if (0 <= x && x <= viewport.width 
+			&& 0 <= y && y <= viewport.height) {
+		const {width, height} = fieldSize(point.fieldType);
+		return {
+			...point, 
+			x: x * width / viewport.width, 
+			y: y * height / viewport.height
+		};
+	} else {
+		return null;
+	}
+}
+
+const drawPoint = ({x, y, color}: PointItemState): Circle => {
 	return {
 		x,
 		y,
-		radius: 17,
-		color: point.color
+		radius: 5,
+		color: color
 	};
 };
 
-function Point(sources: PointSources<PointItemState>): PointSinks<Drawing> {
+function Point(sources: PointSources<PointItemState>): PointSinks<Drawing | null> {
 	const state$ = sources.onion.state$;
 	const vdom$ = state$.map(makePoint);
-	const point$ = state$.map(drawPoint);
+	const point$ = state$
+		.compose(composablePrint('point-state'))
+		.map(p => {
+			const ap = toViewPort(fieldViewPort(p.fieldType), p);
+			return ap ? drawPoint(ap) : null;
+		});
+		// .filter(p => p !== null)
+		// .map(drawPoint);
 	return {
 		// DOM: vdom$,
 		point: point$
 	};
 };
 
-function Points(sources: PointSources<PointItemState[]>): PointSinks<Drawing[]> {
+function Points(sources: PointSources<PointItemState[]>): PointSinks<(Drawing | null)[]> {
 	const PointCollection = makeCollection({
 		item: Point,
 		itemKey: (point: PointItemState, index) => `${point.id}`,
@@ -201,17 +233,19 @@ const fromField: (Position) => Position = ({x, y}) => ({
 	x: (x - FIELD_WIDTH / 2) / FIELD_SCALE,
 	y: (y - FIELD_HEIGHT / 2) / FIELD_SCALE
 });
-const fieldViewPort: (FieldType) => string = (type) => {
+const fieldViewPort = (type: FieldType): ViewPort => {
 	const height = FIELD_HEIGHT * FIELD_SCALE;
 	const width = FIELD_WIDTH * FIELD_SCALE;
 	switch (type) {
-		case 'full': return `0 0 ${width} ${height}`;
-		case 'middle': return `0 ${0.25 * height} ${width} ${0.5 * height}`;
-		case 'up-zone': return `0 0 ${width} ${0.45 * height}`;
-		case 'down-zone': return `0 ${0.55 * height} ${width} ${0.45 * height}`;
+		case 'full': return {x: 0, y: 0, width, height};
+		case 'middle': return {x: 0, y: 0.25 * height, width, height: 0.5 * height};
+		case 'up-zone': return {x: 0, y: 0, width, height: 0.45 * height};
+		case 'down-zone': return {x: 0, y: 0.55 * height, width, height: 0.45 * height};
 		default: throw new Error(`Unknown field type ${type}`);
 	}
 };
+const toViewPortStr = ({x, y, height, width}: ViewPort): string => 
+	`${x} ${y} ${width} ${height}`;
 const fieldSize: (FieldType) => {width: number, height: number} = (type) => {
 	const {w: width, h: height} = scale({h: 400});
 	switch (type) {
@@ -320,18 +354,19 @@ function Field(sources: Sources<State>): Sinks<State> {
 
 	// Resolve colors and points into a single array
 	const pointsLens = {
-		get({points, colors, selected}: State): PointItemState[] {
+		get({points, colors, selected, fieldType}: State): PointItemState[] {
 			return points.map(p => ({
 				...p,
 				color: colors[p.color],
-				selected: p.id === selected
+				selected: p.id === selected,
+				fieldType
 			}));
 		},
 		set(state: State, childState): State {
 			return state; // No change
 		}
 	};
-	const points = isolate(Points, pointsLens)(sources) as PointSinks<Drawing[]>;
+	const points = isolate(Points, pointsLens)(sources) as PointSinks<(Drawing | null)[]>;
 	const selectedReducer$ = startDrag$
 		.map(e => parseInt(e.target.dataset['id']))
 		.map(id => (state: State) => Object.assign({}, state, {selected: id}));
@@ -412,7 +447,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 	const canvas$ = points.point.map(ps => ({
 		id: 'field-canvas',
 		drawings: Object.entries(ps)
-			.filter(([key, _]) => !isNaN(parseInt(key)))
+			.filter(([key, p]) => !isNaN(parseInt(key)) && p !== null)
 			.map(([_, p]) => p)
 	}));
 
@@ -452,7 +487,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 					// 	{attrs: {
 					// 		width,
 					// 		height,
-					// 		viewBox: fieldViewPort(fieldType)
+					// 		viewBox: toViewPortStr(fieldViewPort(fieldType))
 					// 	}},
 					// 	[
 					// 		...drawField(),
