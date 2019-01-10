@@ -8,7 +8,7 @@ import {Button, ModeButtons, ModeState, ModeSinks} from './buttons';
 import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
 import { errorView } from '../operators/errors';
-import { CanvasDescription, Drawing, Circle } from '../driver/canvas';
+import { CanvasDescription, Drawing, Circle, Rect } from '../driver/canvas';
 import { composablePrint } from '../operators/out';
 
 // Dimension in decimeters
@@ -44,6 +44,33 @@ function drawField(): VNode[] {
 				'stroke-width': 2}})),
 	];
 }
+
+const makeField = (fieldType: FieldType): Rect[] => {
+	const viewport = fieldViewPort(fieldType);
+	return [
+		{
+			x: 1,
+			y: 1,
+			width: FIELD_WIDTH * FIELD_SCALE - 1,
+			height: FIELD_HEIGHT * FIELD_SCALE - 1
+		},
+		{
+			x: 1,
+			y: ZONE_HEIGHT * FIELD_SCALE,
+			width: FIELD_HEIGHT * FIELD_SCALE - 1,
+			height: (FIELD_HEIGHT - ZONE_HEIGHT) * FIELD_SCALE
+		}
+	]
+		.map(({x, y, width, height}) => ({
+			x: (x - viewport.x) * (FIELD_WIDTH * FIELD_SCALE) / viewport.width,
+			y: (y - viewport.y) * (FIELD_HEIGHT * FIELD_SCALE) / viewport.height,
+			width: width * (FIELD_WIDTH * FIELD_SCALE) / viewport.width,
+			height: height * (FIELD_HEIGHT * FIELD_SCALE) / viewport.height,
+			strike: 2,
+			color: 'black'
+		}))
+		.filter(r => r !== null);
+};
 
 function getMousePosition(svg, evt) {
 	var CTM = svg.getScreenCTM();
@@ -140,7 +167,7 @@ const drawPoint = ({x, y, color}: PointItemState): Circle => {
 
 function Point(sources: PointSources<PointItemState>): PointSinks<Drawing | null> {
 	const state$ = sources.onion.state$;
-	const vdom$ = state$.map(makePoint);
+	// const vdom$ = state$.map(makePoint);
 	const point$ = state$
 		.compose(composablePrint('point-state'))
 		.map(p => {
@@ -444,14 +471,20 @@ function Field(sources: Sources<State>): Sinks<State> {
 		deletePlayerReducer$,
 		closeReducer$);
 
-	const canvas$ = points.point.map(ps => ({
-		id: 'field-canvas',
-		drawings: Object.entries(ps)
-			.filter(([key, p]) => !isNaN(parseInt(key)) && p !== null)
-			.map(([_, p]) => p)
-	}));
-
 	const state$ = sources.onion.state$;
+
+	const fieldBorder$ = state$.map(({fieldType}) => makeField(fieldType));
+
+	const canvas$ = xs.combine(
+			points.point.map(ps => Object.entries(ps)
+				.filter(([key, p]) => !isNaN(parseInt(key)) && p !== null)
+				.map(([_, p]) => p)),
+			fieldBorder$)
+		.map(([elements, borders]) => ({
+			id: 'field-canvas',
+			drawings: [...elements, ...borders]
+		}));
+
 	const vdom$ = xs.combine(
 			state$,
 			// points.DOM,

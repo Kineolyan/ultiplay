@@ -3,7 +3,12 @@ import {adapt} from '@cycle/run/lib/adapt';
 import { canvas } from '@cycle/dom';
 
 type Rect = {
-
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  strike: number,
+  color: string
 };
 type Circle = {
   x: number,
@@ -22,6 +27,11 @@ function isCircle(d: Drawing): d is Circle {
   return (d as Circle).radius !== undefined;
 }
 
+function isRect(d: Drawing): d is Rect {
+  return (d as Rect).width !== undefined
+    && (d as Rect).height !== undefined;
+}
+
 const clearCanvas = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 };
@@ -34,6 +44,10 @@ const drawCanvas = (ctx: CanvasRenderingContext2D, actions: Drawing[]) => {
       ctx.closePath();
       ctx.fillStyle = d.color;
       ctx.fill();
+    } else if (isRect(d)) {
+      ctx.strokeStyle = d.color;
+      ctx.lineWidth = d.strike;
+      ctx.strokeRect(d.x, d.y, d.width, d.height);
     }
   });
 };
@@ -88,5 +102,7 @@ export {
   CanvasDescription,
   Drawing,
   Rect,
-  Circle
+  Circle,
+  isCircle,
+  isRect
 };
