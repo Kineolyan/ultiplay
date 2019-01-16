@@ -47,25 +47,29 @@ function drawField(): VNode[] {
 
 const makeField = (fieldType: FieldType): Rect[] => {
 	const viewport = fieldViewPort(fieldType);
+	const dims = fieldSize(fieldType);
+	const {scale} = dims;
+
 	return [
 		{
 			x: 1,
 			y: 1,
-			width: FIELD_WIDTH * FIELD_SCALE - 1,
-			height: FIELD_HEIGHT * FIELD_SCALE - 1
+			width: FIELD_WIDTH * FIELD_SCALE - 2,
+			height: FIELD_HEIGHT * FIELD_SCALE - 2
 		},
 		{
 			x: 1,
 			y: ZONE_HEIGHT * FIELD_SCALE,
-			width: FIELD_HEIGHT * FIELD_SCALE - 1,
-			height: (FIELD_HEIGHT - ZONE_HEIGHT) * FIELD_SCALE
+			width: FIELD_WIDTH * FIELD_SCALE - 1,
+			height: (FIELD_HEIGHT - 2 * ZONE_HEIGHT) * FIELD_SCALE
 		}
 	]
+		// Tranlate and scale to viewport
 		.map(({x, y, width, height}) => ({
-			x: (x - viewport.x) * (FIELD_WIDTH * FIELD_SCALE) / viewport.width,
-			y: (y - viewport.y) * (FIELD_HEIGHT * FIELD_SCALE) / viewport.height,
-			width: width * (FIELD_WIDTH * FIELD_SCALE) / viewport.width,
-			height: height * (FIELD_HEIGHT * FIELD_SCALE) / viewport.height,
+			x: (x - viewport.x) * scale,
+			y: (y - viewport.y) * scale,
+			width: width * scale,
+			height: height * scale,
 			strike: 2,
 			color: 'black'
 		}))
@@ -156,11 +160,12 @@ const toViewPort = (viewport: ViewPort, point: PointItemState): PointItemState |
 	}
 }
 
-const drawPoint = ({x, y, color}: PointItemState): Circle => {
+const drawPoint = ({x, y, color, fieldType}: PointItemState): Circle => {
+	const {scale} = fieldSize(fieldType);
 	return {
 		x,
 		y,
-		radius: 5,
+		radius: 17 * scale,
 		color: color
 	};
 };
@@ -239,14 +244,23 @@ function Colors(sources: ColorSources): ColorSinks {
 const onDraggable: <T extends Event>(s: Stream<T>) => Stream<T> =
 	(stream) => stream.filter(e => e.target.classList.contains('draggable'));
 
-type Scale = {w: number, h: number};
+type Scale = {width: number, height: number, scale: number};
 function scale({w}: {w: number}): Scale;
 function scale({h}: {h: number}): Scale;
 function scale(i: any): Scale {
 	if (i.w !== undefined) {
-		return {w: i.w, h: FIELD_HEIGHT * i.w / FIELD_WIDTH};
+		return {
+			width: i.w, 
+			height: FIELD_HEIGHT * i.w / FIELD_WIDTH,
+			scale: i.w / FIELD_WIDTH
+		};
 	} else if (i.h !== undefined) {
-		return {h: i.h, w: i.h * FIELD_WIDTH / FIELD_HEIGHT};
+		const width = i.h * FIELD_WIDTH / FIELD_HEIGHT;
+		return {
+			height: i.h, 
+			width,
+			scale: width / FIELD_WIDTH
+		};
 	} else {
 		throw new Error(`Invalid input ${i}`);
 	}
@@ -273,18 +287,20 @@ const fieldViewPort = (type: FieldType): ViewPort => {
 };
 const toViewPortStr = ({x, y, height, width}: ViewPort): string => 
 	`${x} ${y} ${width} ${height}`;
-const fieldSize: (FieldType) => {width: number, height: number} = (type) => {
-	const {w: width, h: height} = scale({h: 400});
+const fieldSize = (type: FieldType): Scale => {
+	const {width, height, scale: s} = scale({h: 400});
 	switch (type) {
-		case 'full': return {width, height};
+		case 'full': return {width, height, scale: s};
 		case 'middle': return {
 			width: width / 0.5,
-			height
+			height,
+			scale: s / 0.5
 		};
 		case 'up-zone':
 		case 'down-zone': return {
 			width: width / 0.45,
-			height
+			height,
+			scale: s / 0.45
 		};
 		default: throw new Error(`Unknown field type ${type}`);
 	}

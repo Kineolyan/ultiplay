@@ -44,6 +44,9 @@ const drawCanvas = (ctx: CanvasRenderingContext2D, actions: Drawing[]) => {
       ctx.closePath();
       ctx.fillStyle = d.color;
       ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "black";
+      ctx.stroke();
     } else if (isRect(d)) {
       ctx.strokeStyle = d.color;
       ctx.lineWidth = d.strike;
