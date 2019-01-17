@@ -17,34 +17,6 @@ const FIELD_HEIGHT: number = 1000;
 const ZONE_HEIGHT: number = 180;
 const FIELD_SCALE: number = 1;
 
-function drawField(): VNode[] {
-	return [
-		// Vertical lines
-		...[1, FIELD_WIDTH * FIELD_SCALE - 1].map(x =>
-			h('line', {attrs: {
-				x1: x,
-				y1: 0,
-				x2: x,
-				y2: 1000,
-				stroke: 'black',
-				'stroke-width': 2}})),
-		// Horizontal lines
-		...[
-			1,
-			ZONE_HEIGHT * FIELD_SCALE,
-			(FIELD_HEIGHT - ZONE_HEIGHT) * FIELD_SCALE ,
-			FIELD_HEIGHT * FIELD_SCALE - 1
-		].map(y =>
-			h('line', {attrs: {
-				x1: 0,
-				y1: y,
-				x2: 380,
-				y2: y,
-				stroke: 'black',
-				'stroke-width': 2}})),
-	];
-}
-
 const makeField = (fieldType: FieldType): Rect[] => {
 	const viewport = fieldViewPort(fieldType);
 	const dims = fieldSize(fieldType);
@@ -72,8 +44,7 @@ const makeField = (fieldType: FieldType): Rect[] => {
 			height: height * scale,
 			strike: 2,
 			color: 'black'
-		}))
-		.filter(r => r !== null);
+		}));
 };
 
 function getMousePosition(svg, evt) {
@@ -125,23 +96,6 @@ function updatePlayerState(state: State, value: PointState): State {
 	return {...state, points: copy};
 }
 
-const makePoint = point => {
-	const {x, y} = toField(point);
-	return h(
-	'circle.draggable.player',
-	{attrs: {
-		'data-id': point.id,
-		cx: x.toFixed(1),
-		cy: y.toFixed(1),
-		r: 17,
-		stroke: 'black',
-		'stroke-width': point.selected ? 4 : 2,
-		fill: point.color,
-		draggable: 'true',
-		cid: point.id
-	}});
-};
-
 const toViewPort = (viewport: ViewPort, point: PointItemState): PointItemState | null => {
 	const {x, y} = toField({
 		x: point.x - viewport.x,
@@ -160,13 +114,14 @@ const toViewPort = (viewport: ViewPort, point: PointItemState): PointItemState |
 	}
 }
 
-const drawPoint = ({x, y, color, fieldType}: PointItemState): Circle => {
+const drawPoint = ({x, y, color, fieldType, selected}: PointItemState): Circle => {
 	const {scale} = fieldSize(fieldType);
 	return {
 		x,
 		y,
 		radius: 17 * scale,
-		color: color
+		color: color,
+		stroke: selected ? 3 : 1
 	};
 };
 

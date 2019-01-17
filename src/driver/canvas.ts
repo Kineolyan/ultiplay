@@ -14,7 +14,8 @@ type Circle = {
   x: number,
   y: number,
   radius: number,
-  color: string
+  color: string,
+  stroke: number
 };
 type Drawing = Rect | Circle;
 
@@ -44,7 +45,7 @@ const drawCanvas = (ctx: CanvasRenderingContext2D, actions: Drawing[]) => {
       ctx.closePath();
       ctx.fillStyle = d.color;
       ctx.fill();
-      ctx.lineWidth = 1;
+      ctx.lineWidth = d.stroke;
       ctx.strokeStyle = "black";
       ctx.stroke();
     } else if (isRect(d)) {
