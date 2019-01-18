@@ -270,6 +270,20 @@ const extractScaledPosition = (e: MouseEvent) => {
 	};
 };
 
+const associateSelected = (state$: Stream<State>, position$: Stream<Position>) => state$.map(({points}) => {
+	return position$.map((position) => {
+		const selected = points.find(p => {
+			return Math.abs(p.x - position.x) <= 10
+				&& Math.abs(p.y - position.y) <= 10;
+		});
+		return {
+			...position, 
+			id: selected !== undefined ? selected.id : null
+		};
+	});
+})
+.flatten();
+
 type State = {
 	colors: string[],
 	selected: PlayerId,
@@ -286,14 +300,16 @@ type Sinks<S> = {
 	canvas: Stream<CanvasDescription>
 };
 function Field(sources: Sources<State>): Sinks<State> {
+	const state$ = sources.onion.state$;
+
 	const svg$ = sources.DOM.select('svg');
 	const startDrag$ = svg$.events('mousedown')
 		.compose(onDraggable);
 	const onDrag$ = svg$.events('mousemove');
-	const endDrag$ = xs.merge(
+	const sEndDrag$ = xs.merge(
 			svg$.events('mouseup'),
-			svg$.events('mouseleave').debug('leave'));
-	const dblClick$ = svg$.events('dblclick')
+			svg$.events('mouseleave'));
+	const sDblClick$ = svg$.events('dblclick')
 		.map(e => {
 			e.preventDefault();
 			const position = getMousePosition(e.ownerTarget, e);
@@ -302,17 +318,25 @@ function Field(sources: Sources<State>): Sinks<State> {
 
 	const canvas$ = sources.DOM.select('canvas');
 	const cDblClick$ = canvas$.events('dblclick')
-		.map(extractScaledPosition);
+		.map(extractScaledPosition)
+		.map(fromField)
+		.compose(composablePrint('new'));
 	const cDown$ = canvas$.events('mousedown')
-		.map(extractScaledPosition);
+		.map(extractScaledPosition)
+		.map(fromField);
 	const cUp$ = canvas$.events('mouseup')
 		.map(extractScaledPosition);
 	const cMove$ = canvas$.events('mousemove')
 		.map(extractScaledPosition);
 	const cLeave$ = canvas$.events('mouseleave')
 			.map(extractScaledPosition);
-	printStream(cDown$, 'down');
-	printStream(cLeave$, 'leave');
+	// printStream(cDown$, 'down');
+	// printStream(cLeave$, 'leave');
+
+	const selectedStart$ = associateSelected(state$, cDown$);
+
+	const dblClick$ = cDblClick$;
+	const endDrag$ = xs.merge(cUp$, cLeave$);
 
 	const newPlayerReducer$ = dblClick$.map(
 		position => (state: State) => {
@@ -373,6 +397,12 @@ function Field(sources: Sources<State>): Sinks<State> {
 			};
 		});
 	const positionReducer$ = stateUpdate$.map(update => state => updatePlayerState(state, update));
+	
+	// const selectedReducer$ = startDrag$
+	// 	.map(e => parseInt(e.target.dataset['id']))
+	// 	.map(id => (state: State) => Object.assign({}, state, {selected: id}));
+	const selectedReducer$ = selectedStart$
+		.map(({id}) => (state: State) => Object.assign({}, state, {selected: id}));
 
 	// Resolve colors and points into a single array
 	const pointsLens = {
@@ -389,9 +419,6 @@ function Field(sources: Sources<State>): Sinks<State> {
 		}
 	};
 	const points = isolate(Points, pointsLens)(sources) as PointSinks<(Drawing | null)[]>;
-	const selectedReducer$ = startDrag$
-		.map(e => parseInt(e.target.dataset['id']))
-		.map(id => (state: State) => Object.assign({}, state, {selected: id}));
 
 	const colorLens = {
 		get({colors}: State): ColorState {
@@ -465,8 +492,6 @@ function Field(sources: Sources<State>): Sinks<State> {
 		newPlayerReducer$,
 		deletePlayerReducer$,
 		closeReducer$);
-
-	const state$ = sources.onion.state$;
 
 	const fieldBorder$ = state$.map(({fieldType}) => makeField(fieldType));
 
