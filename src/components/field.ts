@@ -9,7 +9,7 @@ import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
 import { errorView } from '../operators/errors';
 import { CanvasDescription, Drawing, Circle, Rect } from '../driver/canvas';
-import { composablePrint } from '../operators/out';
+import { composablePrint, printStream } from '../operators/out';
 
 // Dimension in decimeters
 const FIELD_WIDTH: number = 380;
@@ -261,6 +261,15 @@ const fieldSize = (type: FieldType): Scale => {
 	}
 };
 
+const extractScaledPosition = (e: MouseEvent) => {
+	e.stopPropagation();
+	const factor = e.srcElement.width / FIELD_WIDTH;
+	return {
+		x: e.offsetX / factor,
+		y: e.offsetY / factor
+	};
+};
+
 type State = {
 	colors: string[],
 	selected: PlayerId,
@@ -290,6 +299,21 @@ function Field(sources: Sources<State>): Sinks<State> {
 			const position = getMousePosition(e.ownerTarget, e);
 			return fromField(position);
 		});
+
+	const canvas$ = sources.DOM.select('canvas');
+	const cDblClick$ = canvas$.events('dblclick')
+		.map(extractScaledPosition);
+	const cDown$ = canvas$.events('mousedown')
+		.map(extractScaledPosition);
+	const cUp$ = canvas$.events('mouseup')
+		.map(extractScaledPosition);
+	const cMove$ = canvas$.events('mousemove')
+		.map(extractScaledPosition);
+	const cLeave$ = canvas$.events('mouseleave')
+			.map(extractScaledPosition);
+	printStream(cDown$, 'down');
+	printStream(cLeave$, 'leave');
+
 	const newPlayerReducer$ = dblClick$.map(
 		position => (state: State) => {
 			const points = state.points.slice();
