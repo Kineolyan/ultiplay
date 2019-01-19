@@ -1,6 +1,5 @@
 import xs, {Stream} from 'xstream';
 import {adapt} from '@cycle/run/lib/adapt';
-import { canvas } from '@cycle/dom';
 
 type Rect = {
   x: number,
@@ -15,7 +14,7 @@ type Circle = {
   y: number,
   radius: number,
   color: string,
-  stroke: number
+  strike: number
 };
 type Drawing = Rect | Circle;
 
@@ -45,7 +44,7 @@ const drawCanvas = (ctx: CanvasRenderingContext2D, actions: Drawing[]) => {
       ctx.closePath();
       ctx.fillStyle = d.color;
       ctx.fill();
-      ctx.lineWidth = d.stroke;
+      ctx.lineWidth = d.strike;
       ctx.strokeStyle = "black";
       ctx.stroke();
     } else if (isRect(d)) {
@@ -56,32 +55,56 @@ const drawCanvas = (ctx: CanvasRenderingContext2D, actions: Drawing[]) => {
   });
 };
 
+const getCanvas = (canvasId: string): HTMLCanvasElement | null => {
+  const element = document.getElementById(canvasId);
+  return element && element.nodeName === 'CANVAS'
+    ? element as HTMLCanvasElement
+    : null;
+};
+
+const redrawCanvas = (canvas: HTMLCanvasElement, drawings: Drawing[]): void => {
+  const ctx = canvas.getContext('2d');
+  clearCanvas(canvas, ctx);
+  drawCanvas(ctx, drawings);
+};
+
 const makeCanvasDriver = () => (outgoing$: Stream<CanvasDescription>): Stream<any> => {
+  const elts = {};
+  let idGenerator = (() => {
+    let i = 0;
+    return () => ++i;
+  })();
+
+  const scheduleRedraws = (opId, canvasId, drawings, count = 0) => {
+    setTimeout(
+      () => {
+        console.log('attempting a redraw for', canvasId);
+        const lastOp = elts[canvasId] || 0;
+        if (lastOp < opId) {
+          const canvas = getCanvas(canvasId);
+          if (canvas !== null) {
+            redrawCanvas(canvas, drawings);
+            elts[canvasId] = opId;
+          } else if (count < 50) {
+            scheduleRedraws(opId, canvasId, drawings, count + 1);
+          } else {
+            console.error(`Canvas element ${canvasId} not present`);
+          }
+        } // else, another drawing succeeded. Ignore...
+      },
+      50);
+  }
   outgoing$.addListener({
     next: ({id: canvasId, drawings}) => {
+      const opId = idGenerator();
       // console.log('Drawing', canvasId, 'with', drawings);
-      const element = document.getElementById(canvasId);
-      if (element && element.nodeName === 'CANVAS') {
-        const canvas = element as HTMLCanvasElement;
-        const ctx = canvas.getContext('2d');
-        clearCanvas(canvas, ctx);
-        drawCanvas(ctx, drawings);
+      const canvas = getCanvas(canvasId);
+      if (canvas !== null) {
+        redrawCanvas(canvas, drawings);
+        elts[canvasId] = opId;
       } else {
         // Retry a bit later
-        // FIXME: do something smarter
-        setTimeout(
-          () => {
-            console.log('attempting a redraw for', canvasId);
-            const element = document.getElementById(canvasId);
-            if (element && element.nodeName === 'CANVAS') {
-              const canvas = element as HTMLCanvasElement;
-              const ctx = canvas.getContext('2d');
-              drawCanvas(ctx, drawings);
-            } else {
-              console.error(`Canvas element ${canvasId} not present`);
-            }
-          },
-          250);
+        scheduleRedraws(opId, canvasId, drawings);
       }
     },
     error: (e) => {

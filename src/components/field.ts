@@ -110,7 +110,7 @@ const drawPoint = ({x, y, color, fieldType, selected}: PointItemState): Circle =
 		y,
 		radius: 17 * scale,
 		color: color,
-		stroke: selected ? 3 : 1
+		strike: selected ? 3 : 1
 	};
 };
 
