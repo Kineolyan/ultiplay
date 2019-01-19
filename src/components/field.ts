@@ -327,13 +327,15 @@ function Field(sources: Sources<State>): Sinks<State> {
 	const cUp$ = canvas$.events('mouseup')
 		.map(extractScaledPosition);
 	const cMove$ = canvas$.events('mousemove')
-		.map(extractScaledPosition);
+		.map(extractScaledPosition)
+		.map(fromField);
 	const cLeave$ = canvas$.events('mouseleave')
 			.map(extractScaledPosition);
 	// printStream(cDown$, 'down');
 	// printStream(cLeave$, 'leave');
 
-	const selectedStart$ = associateSelected(state$, cDown$);
+	const selectedStart$ = associateSelected(state$, cDown$)
+		.filter(p => p.id !== null);
 
 	const dblClick$ = cDblClick$;
 	const endDrag$ = xs.merge(cUp$, cLeave$);
@@ -347,55 +349,60 @@ function Field(sources: Sources<State>): Sinks<State> {
 			return {...state, points, selected: id};
 		});
 
-	const basePosition$ = startDrag$.map(e => {
-		const svg = e.ownerTarget;
-		const elt = e.target;
-		const offset = getMousePosition(svg, e);
-		offset.x -= parseFloat(elt.getAttributeNS(null, 'cx'));
-		offset.y -= parseFloat(elt.getAttributeNS(null, 'cy'));
+	// const basePosition$ = startDrag$.map(e => {
+	// 	const svg = e.ownerTarget;
+	// 	const elt = e.target;
+	// 	const offset = getMousePosition(svg, e);
+	// 	offset.x -= parseFloat(elt.getAttributeNS(null, 'cx'));
+	// 	offset.y -= parseFloat(elt.getAttributeNS(null, 'cy'));
 
-		return {element: elt, offset};
-	});
-	const svgPosition$ = onDrag$.map(e => {
-		e.preventDefault();
-		const svg = e.ownerTarget;
-		return getMousePosition(svg, e);
-	});
-	// FIXME always force a listener for the svg position (to be able to use endWhen)
-	svgPosition$.addListener({});
+	// 	return {element: elt, offset};
+	// });
+	// const svgPosition$ = onDrag$.map(e => {
+	// 	e.preventDefault();
+	// 	const svg = e.ownerTarget;
+	// 	return getMousePosition(svg, e);
+	// });
+	// // FIXME always force a listener for the svg position (to be able to use endWhen)
+	// svgPosition$.addListener({});
 
-	const position$ = basePosition$
-		.map(({element, offset}) => {
-			const id = parseInt(element.getAttributeNS(null, 'cid'));
-			return svgPosition$
-				.map(position => ({
-					id,
-					x: position.x - offset.x,
-					y: position.y - offset.y
-				}))
+	// const position$ = basePosition$
+	// 	.map(({element, offset}) => {
+	// 		const id = parseInt(element.getAttributeNS(null, 'cid'));
+	// 		return svgPosition$
+	// 			.map(position => ({
+	// 				id,
+	// 				x: position.x - offset.x,
+	// 				y: position.y - offset.y
+	// 			}))
+	// 			.endWhen(endDrag$);
+	// 	})
+	// 	.flatten();
+
+	// const pointMove$ = basePosition$
+	// 	.map(({element}) => {
+	// 		return position$
+	// 			.map(({x, y}) => {
+	// 				element.setAttributeNS(null, 'cx', x);
+	// 				element.setAttributeNS(null, 'cy', y);
+	// 				return null;
+	// 			})
+	// 			.endWhen(endDrag$);
+	// 	})
+	// 	.flatten();
+	// const stateUpdate$ = position$.compose(trigger(endDrag$))
+	// 	.map((point) => {
+	// 		const position = fromField(point);
+	// 		return {
+	// 			...point,
+	// 			...position
+	// 		};
+	// 	});
+	const stateUpdate$ = selectedStart$.map(({id}) => {
+			return cMove$.map(p => ({...p, id}))
 				.endWhen(endDrag$);
 		})
 		.flatten();
-
-	const pointMove$ = basePosition$
-		.map(({element}) => {
-			return position$
-				.map(({x, y}) => {
-					element.setAttributeNS(null, 'cx', x);
-					element.setAttributeNS(null, 'cy', y);
-					return null;
-				})
-				.endWhen(endDrag$);
-		})
-		.flatten();
-	const stateUpdate$ = position$.compose(trigger(endDrag$))
-		.map((point) => {
-			const position = fromField(point);
-			return {
-				...point,
-				...position
-			};
-		});
 	const positionReducer$ = stateUpdate$.map(update => state => updatePlayerState(state, update));
 	
 	// const selectedReducer$ = startDrag$
@@ -511,11 +518,10 @@ function Field(sources: Sources<State>): Sinks<State> {
 			colors.DOM,
 			modes.DOM,
 			deletePlayer.DOM,
-			closeButton.DOM,
-			pointMove$.startWith(null))
-		.map(([{selected, fieldType}/*, elements*/, colors, modes, deletePlayer, closeDOM]) => {
+			closeButton.DOM)
+		.map(([{selected, fieldType}/*, elements*/, colors, modes, deletePlayer]) => {
 			const elementsOnSelected = selected
-				? [colors, deletePlayer, closeDOM]
+				? [colors, deletePlayer]
 				: [];
 			// const elts = Object.entries(elements)
 			// 	.filter(([key, _]) => !isNaN(parseInt(key)))
