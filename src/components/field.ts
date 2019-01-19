@@ -129,7 +129,7 @@ function Point(sources: PointSources<PointItemState>): PointSinks<Drawing | null
 	const state$ = sources.onion.state$;
 	// const vdom$ = state$.map(makePoint);
 	const point$ = state$
-		.compose(composablePrint('point-state'))
+		// .compose(composablePrint('point-state'))
 		.map(p => {
 			const ap = toViewPort(fieldViewPort(p.fieldType), p);
 			return ap ? drawPoint(ap) : null;
@@ -269,7 +269,23 @@ const extractScaledPosition = (e: MouseEvent) => {
 		y: e.offsetY / factor
 	};
 };
-
+const adaptOrigin = (fieldType: FieldType) => {
+	const {x, y} = fieldViewPort(fieldType);
+	return (position) => ({
+		...position,
+		x: position.x + x,
+		y: position.y + y
+	});
+};
+const resizeToState = (state$: Stream<State>, position$: Stream<MouseEvent>): Stream<Position> => {
+	return state$.map(({fieldType}) => {
+		return position$
+			.map(extractScaledPosition)
+			.map(adaptOrigin(fieldType))
+			.map(fromField);
+	})
+	.flatten();
+}
 const associateSelected = (state$: Stream<State>, position$: Stream<Position>) => state$.map(({points}) => {
 	return position$.map((position) => {
 		const selected = points.find(p => {
@@ -302,33 +318,36 @@ type Sinks<S> = {
 function Field(sources: Sources<State>): Sinks<State> {
 	const state$ = sources.onion.state$;
 
-	const svg$ = sources.DOM.select('svg');
-	const startDrag$ = svg$.events('mousedown')
-		.compose(onDraggable);
-	const onDrag$ = svg$.events('mousemove');
-	const sEndDrag$ = xs.merge(
-			svg$.events('mouseup'),
-			svg$.events('mouseleave'));
-	const sDblClick$ = svg$.events('dblclick')
-		.map(e => {
-			e.preventDefault();
-			const position = getMousePosition(e.ownerTarget, e);
-			return fromField(position);
-		});
+	// const svg$ = sources.DOM.select('svg');
+	// const startDrag$ = svg$.events('mousedown')
+	// 	.compose(onDraggable);
+	// const onDrag$ = svg$.events('mousemove');
+	// const sEndDrag$ = xs.merge(
+	// 		svg$.events('mouseup'),
+	// 		svg$.events('mouseleave'));
+	// const sDblClick$ = svg$.events('dblclick')
+	// 	.map(e => {
+	// 		e.preventDefault();
+	// 		const position = getMousePosition(e.ownerTarget, e);
+	// 		return fromField(position);
+	// 	});
 
 	const canvas$ = sources.DOM.select('canvas');
-	const cDblClick$ = canvas$.events('dblclick')
-		.map(extractScaledPosition)
-		.map(fromField)
-		.compose(composablePrint('new'));
-	const cDown$ = canvas$.events('mousedown')
-		.map(extractScaledPosition)
-		.map(fromField);
+	const cDblClick$ = resizeToState(state$, canvas$.events('dblclick'));
+	const cDown$ = resizeToState(state$, canvas$.events('mousedown'));
+	const cMove$ = resizeToState(state$, canvas$.events('mousemove'));
+	// const cDblClick$ = canvas$.events('dblclick')
+	// 	.map(extractScaledPosition)
+	// 	.map(fromField)
+	// 	.compose(composablePrint('new'));
+	// const cDown$ = canvas$.events('mousedown')
+	// 	.map(extractScaledPosition)
+	// 	.map(fromField);
 	const cUp$ = canvas$.events('mouseup')
 		.map(extractScaledPosition);
-	const cMove$ = canvas$.events('mousemove')
-		.map(extractScaledPosition)
-		.map(fromField);
+	// const cMove$ = canvas$.events('mousemove')
+	// 	.map(extractScaledPosition)
+	// 	.map(fromField);
 	const cLeave$ = canvas$.events('mouseleave')
 			.map(extractScaledPosition);
 	// printStream(cDown$, 'down');
@@ -509,7 +528,11 @@ function Field(sources: Sources<State>): Sinks<State> {
 			fieldBorder$)
 		.map(([elements, borders]) => ({
 			id: 'field-canvas',
-			drawings: [...elements, ...borders]
+			drawings: [
+				// Borders first to have points above
+				...borders, 
+				...elements
+			]
 		}));
 
 	const vdom$ = xs.combine(

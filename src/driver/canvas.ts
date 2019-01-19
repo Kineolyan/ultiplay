@@ -59,7 +59,7 @@ const drawCanvas = (ctx: CanvasRenderingContext2D, actions: Drawing[]) => {
 const makeCanvasDriver = () => (outgoing$: Stream<CanvasDescription>): Stream<any> => {
   outgoing$.addListener({
     next: ({id: canvasId, drawings}) => {
-      console.log('Drawing', canvasId, 'with', drawings);
+      // console.log('Drawing', canvasId, 'with', drawings);
       const element = document.getElementById(canvasId);
       if (element && element.nodeName === 'CANVAS') {
         const canvas = element as HTMLCanvasElement;
