@@ -16,10 +16,13 @@ type TacticDisplay = {
   selected?: PlayerId,
   fieldType: FieldType
 };
+type View = 'tactics' | 'codec' | 'help';
 type State = {
   // Constants
   colors: string[],
+  view: View,
   mode: CodecMode,
+  showMenu: boolean,
   showHelp: boolean,
   viewer: 'listing' | 'player',
   tacticIdx: number,
@@ -38,8 +41,10 @@ function getInitialV1State(state): State {
   const {tactics} = state.content as CodecPayload;
   const display = tactics.map(_ => DEFAULT_DISPLAY);
   return {
+    view: 'tactics',
     mode: null,
-    showHelp: false,
+    showMenu: false,
+    showHelp: true,
     viewer: 'player',
     colors: [
       '#1f77b4',
@@ -58,8 +63,10 @@ function getInitialV1State(state): State {
 
 function getInitialDevState(): State {
   return {
+    view: 'tactics',
     mode: null,
-    showHelp: false,
+    showMenu: false,
+    showHelp: true,
     viewer: 'player',
     colors: [
       '#1f77b4',
@@ -99,8 +106,10 @@ function getInitialDevState(): State {
 
 function getDefaultInitialState(): State {
   return {
+    view: 'tactics',
     mode: null,
-    showHelp: false,
+    showMenu: false,
+    showHelp: true,
     viewer: 'player',
     colors: [
       '#1f77b4',
@@ -149,6 +158,7 @@ const getInitialState: () => State = () => {
 };
 
 export {
+  View,
   FieldType,
   Tactic,
   TacticDisplay,

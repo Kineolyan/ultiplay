@@ -8,6 +8,8 @@ import Pagination, * as pag from './pagination';
 import {updateItem, updateItems} from '../state/operators';
 import {Tactic, TacticDisplay} from '../state/initial';
 import isolate from '../ext/re-isolate';
+import { errorView } from '../operators/errors';
+import { CanvasDescription } from '../driver/canvas';
 
 type State = {
   // Constants
@@ -25,6 +27,7 @@ type Sources = {
 type Sinks<S> = {
   DOM: Stream<VNode>,
   onion: Stream<Reducer<S>>,
+  canvas: Stream<CanvasDescription>,
   moveItem: Stream<pag.MoveRequest>,
   copyItem: Stream<pag.CopyRequest>,
   deleteItem: Stream<number>
@@ -34,7 +37,7 @@ const getTactic: (s: State) => Tactic = (state) => state.tactics[state.tacticIdx
 const getDisplay: (s: State) => TacticDisplay = (state) => state.display[state.tacticIdx];
 
 function Player(sources: Sources): Sinks<State> {
-  const tabClick$ = sources.DOM.select('.tab').events('click')
+  const tabClick$ = sources.DOM.select('.ui.button').events('click')
     .map(e => parseInt(e.target.dataset['id']) as Tab);
   const tabReducer$: Stream<Reducer<State>> = tabClick$.map(tab => state => {
     // Update all displays to the same view
@@ -92,6 +95,8 @@ function Player(sources: Sources): Sinks<State> {
     tabReducer$,
     scenario.onion,
     pagination.onion);
+  
+  const canvas$ = scenario.canvas;
 
   const state$ = sources.onion.state$;
   const vdom$ = xs.combine(
@@ -118,24 +123,24 @@ function Player(sources: Sources): Sinks<State> {
       ].map(t => {
         const attrs = {
           'data-id': t,
-          class: 'tab',
-          style: tab === t ? 'font-weight: bold' : ''
+          class: `ui button ${tab === t ? 'active' : ''}`
         };
         const name = getTabName(t);
-        return h('li', {attrs}, name);
+        return h('button', {attrs}, name);
       });
 
       return div(
       [
-        h('ul', tabs),
+        div('.ui.buttons', tabs),
         ...tabElements
       ]);
     })
-    .replaceError(() => xs.of(div(`Internal error in tactic player`)));
+    .replaceError(errorView('player'));
 
   return {
     DOM: vdom$,
     onion: reducer$,
+    canvas: canvas$,
     moveItem: pagination.moveItem,
     copyItem: pagination.copyItem,
     deleteItem: pagination.deleteItem

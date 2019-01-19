@@ -7,6 +7,7 @@ import Scenario, {State as ScenarioState} from './scenario';
 import * as pag from './pagination';
 import {Tactic, TacticDisplay} from '../state/initial';
 import isolate from '../ext/re-isolate';
+import { errorView } from '../operators/errors';
 
 type State = {
   // Constants
@@ -47,7 +48,7 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
   const delete$ = clicks$('.delete');
   const copyAfter$ = clicks$('.copy-after');
 
-  const tabClick$ = clicks$('.tab')
+  const tabClick$ = clicks$('.ui.button.view-btn')
     .map(e => parseInt(e.target.dataset['id']) as Tab);
   const tabReducer$ = tabClick$.map(tab => (state: ItemState) => {
     const display = {...state.display, tab};
@@ -116,11 +117,10 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
       ].map(t => {
         const attrs = {
           'data-id': t,
-          class: 'tab',
-          style: tab === t ? 'font-weight: bold' : ''
+          class: `ui button view-btn ${tab === t ? 'active' : ''}`
         };
         const name = getTabName(t);
-        return h('li', {attrs}, name);
+        return h('button', {attrs}, name);
       });
 
       const deletAattrs = pages === 1
@@ -128,7 +128,7 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
         : {};
 
       return div([
-        h('ul', tabs),
+        h('div.ui.buttons', tabs),
         current > 1
           ? div([
               button('.move-prev', 'Move Previous')
@@ -147,7 +147,7 @@ function Item(sources: Sources<ItemState>): Sinks<ItemState> {
           : null
       ]);
     })
-    .replaceError(() => xs.of(div(`Internal error in tactic player`)));
+    .replaceError(errorView('tactic-player'));
 
   return {
     DOM: vdom$,
@@ -196,17 +196,16 @@ function Listing(sources: Sources<State>): Sinks<State> {
   };
   const list = isolate(List, listLens)(sources) as Sinks<State>;
 
-  const reducer$ = xs.merge(
-    list.onion);
+  const reducer$ = list.onion;
 
-  const state$ = sources.onion.state$;
-  const vdom$ = xs.combine(
-      state$,
-      list.DOM)
-    .map(([state, list]) => {
-      return div(list);
+  const vdom$ = list.DOM
+    .map((list) => {
+      const elts = Object.entries(list)
+        .filter(([key, _]) => !isNaN(parseInt(key)))
+        .map(([_, dom]) => dom);
+      return div(elts);
     })
-    .replaceError(() => xs.of(div(`Internal error in tactic list`)));
+    .replaceError(errorView('player-list'));
 
   return {
     DOM: vdom$,

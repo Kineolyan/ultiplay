@@ -4,20 +4,19 @@
   "main": "index.js",
   "license": "MIT",
   "devDependencies": {
-    "parcel-bundler": "^1.9.3",
-    "typescript": "^2.9.2"
+    "less": "^3.9.0",
+    "parcel-bundler": "1.11.0",
+    "typescript": "3.2.2"
   },
   "dependencies": {
-    "@cycle/dom": "^20.4.0",
-    "@cycle/isolate": "^3.3.0",
-    "@cycle/xstream-run": "^4.2.0",
+    "@cycle/dom": "22.3.0",
+    "@cycle/isolate": "4.2.0",
     "aframe": "^0.8.2",
-    "aframe-environment-component": "^1.0.0",
-    "cycle-onionify": "^6.1.0",
-    "xstream": "^11.7.0"
+    "aframe-environment-component": "1.1.0",
+    "cycle-onionify": "^6.1.0"
   },
   "scripts": {
-    "start": "parcel index.html notebook.html",
+    "start": "parcel serve --no-hmr index.html",
     "build": "parcel build --public-url . --out-dir dist index.html",
     "watch": "parcel serve --no-hmr index.html",
     "parcel": "parcel"

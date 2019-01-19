@@ -17,7 +17,7 @@ type StandardSinks<T> = {
 };
 
 function reisolate<InnerSo, InnerSi>(component: Component<InnerSo, InnerSi>): Component<InnerSo, InnerSi>;
-function reisolate<InnerSo, InnerSi, OuterSo, OuterSi>(component: Component<InnerSo, InnerSi>, scope: string): Component<OuterSo, OuterSi>;
+function reisolate<InnerSo, InnerSi, OuterSo, OuterSi>(component: Component<InnerSo, InnerSi>): Component<OuterSo, OuterSi>;
 function reisolate<
     InnerSo, 
     InnerSi, 
@@ -42,9 +42,6 @@ function reisolate<
     Component<InnerSo, InnerSi> | Component<OuterSo, OuterSi> | Component<ESSo,  ESSi> {
   if (scope === undefined) {
     return isolate(component) as Component<InnerSo, InnerSi>;
-  } else if (isString(scope)) {
-    const cpn = isolate(component, scope) as Component<OuterSo, OuterSi>;
-    return (sources: OuterSo) => cpn(sources);
   } else {
     const cpn = isolate(component, {onion: scope}) as Component<ESSo,  ESSi>;
     return (sources: ESSo) => cpn(sources);
