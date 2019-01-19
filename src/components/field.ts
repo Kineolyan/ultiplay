@@ -2,14 +2,12 @@ import xs, {Stream} from 'xstream';
 import {h, div, DOMSource, VNode} from '@cycle/dom';
 import {makeCollection, StateSource, Reducer} from 'cycle-onionify';
 
-import {trigger} from '../operators/trigger';
 import {createPlayer, generatePlayerId, PlayerId, Player} from './players';
 import {Button, ModeButtons, ModeState, ModeSinks} from './buttons';
 import {FieldType} from '../state/initial';
 import isolate from '../ext/re-isolate';
 import { errorView } from '../operators/errors';
 import { CanvasDescription, Drawing, Circle, Rect } from '../driver/canvas';
-import { composablePrint, printStream } from '../operators/out';
 
 // Dimension in decimeters
 const FIELD_WIDTH: number = 380;
@@ -47,14 +45,6 @@ const makeField = (fieldType: FieldType): Rect[] => {
 		}));
 };
 
-function getMousePosition(svg, evt) {
-	var CTM = svg.getScreenCTM();
-	return {
-		x: (evt.clientX - CTM.e) / CTM.a,
-		y: (evt.clientY - CTM.f) / CTM.d
-	};
-}
-
 type ViewPort = {
 	x: number, 
 	y: number,
@@ -84,7 +74,6 @@ type PointSources<S> = {
 	onion: StateSource<S>
 };
 type PointSinks<E> = {
-	// DOM: Stream<E>,
 	point: Stream<E>
 };
 
@@ -127,17 +116,12 @@ const drawPoint = ({x, y, color, fieldType, selected}: PointItemState): Circle =
 
 function Point(sources: PointSources<PointItemState>): PointSinks<Drawing | null> {
 	const state$ = sources.onion.state$;
-	// const vdom$ = state$.map(makePoint);
 	const point$ = state$
-		// .compose(composablePrint('point-state'))
 		.map(p => {
 			const ap = toViewPort(fieldViewPort(p.fieldType), p);
 			return ap ? drawPoint(ap) : null;
 		});
-		// .filter(p => p !== null)
-		// .map(drawPoint);
 	return {
-		// DOM: vdom$,
 		point: point$
 	};
 };
@@ -148,7 +132,6 @@ function Points(sources: PointSources<PointItemState[]>): PointSinks<(Drawing | 
 		itemKey: (point: PointItemState, index) => `${point.id}`,
 		itemScope: key => key,
 		collectSinks: instances => ({
-			// DOM: instances.pickCombine('DOM')
 			point: instances.pickCombine('point')
 		})
 	});
@@ -196,9 +179,6 @@ function Colors(sources: ColorSources): ColorSinks {
 	};
 };
 
-const onDraggable: <T extends Event>(s: Stream<T>) => Stream<T> =
-	(stream) => stream.filter(e => e.target.classList.contains('draggable'));
-
 type Scale = {width: number, height: number, scale: number};
 function scale({w}: {w: number}): Scale;
 function scale({h}: {h: number}): Scale;
@@ -240,8 +220,6 @@ const fieldViewPort = (type: FieldType): ViewPort => {
 		default: throw new Error(`Unknown field type ${type}`);
 	}
 };
-const toViewPortStr = ({x, y, height, width}: ViewPort): string => 
-	`${x} ${y} ${width} ${height}`;
 const fieldSize = (type: FieldType): Scale => {
 	const {width, height, scale: s} = scale({h: 400});
 	switch (type) {
@@ -263,7 +241,8 @@ const fieldSize = (type: FieldType): Scale => {
 
 const extractScaledPosition = (e: MouseEvent) => {
 	e.stopPropagation();
-	const factor = e.srcElement.width / FIELD_WIDTH;
+	const canvas = e.srcElement as HTMLCanvasElement;
+	const factor = canvas.width / FIELD_WIDTH;
 	return {
 		x: e.offsetX / factor,
 		y: e.offsetY / factor
@@ -317,41 +296,15 @@ type Sinks<S> = {
 };
 function Field(sources: Sources<State>): Sinks<State> {
 	const state$ = sources.onion.state$;
-
-	// const svg$ = sources.DOM.select('svg');
-	// const startDrag$ = svg$.events('mousedown')
-	// 	.compose(onDraggable);
-	// const onDrag$ = svg$.events('mousemove');
-	// const sEndDrag$ = xs.merge(
-	// 		svg$.events('mouseup'),
-	// 		svg$.events('mouseleave'));
-	// const sDblClick$ = svg$.events('dblclick')
-	// 	.map(e => {
-	// 		e.preventDefault();
-	// 		const position = getMousePosition(e.ownerTarget, e);
-	// 		return fromField(position);
-	// 	});
-
 	const canvas$ = sources.DOM.select('canvas');
+
 	const cDblClick$ = resizeToState(state$, canvas$.events('dblclick'));
 	const cDown$ = resizeToState(state$, canvas$.events('mousedown'));
 	const cMove$ = resizeToState(state$, canvas$.events('mousemove'));
-	// const cDblClick$ = canvas$.events('dblclick')
-	// 	.map(extractScaledPosition)
-	// 	.map(fromField)
-	// 	.compose(composablePrint('new'));
-	// const cDown$ = canvas$.events('mousedown')
-	// 	.map(extractScaledPosition)
-	// 	.map(fromField);
 	const cUp$ = canvas$.events('mouseup')
 		.map(extractScaledPosition);
-	// const cMove$ = canvas$.events('mousemove')
-	// 	.map(extractScaledPosition)
-	// 	.map(fromField);
 	const cLeave$ = canvas$.events('mouseleave')
 			.map(extractScaledPosition);
-	// printStream(cDown$, 'down');
-	// printStream(cLeave$, 'leave');
 
 	const selectedStart$ = associateSelected(state$, cDown$)
 		.filter(p => p.id !== null);
@@ -367,56 +320,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 				createPlayer({...position, id}));
 			return {...state, points, selected: id};
 		});
-
-	// const basePosition$ = startDrag$.map(e => {
-	// 	const svg = e.ownerTarget;
-	// 	const elt = e.target;
-	// 	const offset = getMousePosition(svg, e);
-	// 	offset.x -= parseFloat(elt.getAttributeNS(null, 'cx'));
-	// 	offset.y -= parseFloat(elt.getAttributeNS(null, 'cy'));
-
-	// 	return {element: elt, offset};
-	// });
-	// const svgPosition$ = onDrag$.map(e => {
-	// 	e.preventDefault();
-	// 	const svg = e.ownerTarget;
-	// 	return getMousePosition(svg, e);
-	// });
-	// // FIXME always force a listener for the svg position (to be able to use endWhen)
-	// svgPosition$.addListener({});
-
-	// const position$ = basePosition$
-	// 	.map(({element, offset}) => {
-	// 		const id = parseInt(element.getAttributeNS(null, 'cid'));
-	// 		return svgPosition$
-	// 			.map(position => ({
-	// 				id,
-	// 				x: position.x - offset.x,
-	// 				y: position.y - offset.y
-	// 			}))
-	// 			.endWhen(endDrag$);
-	// 	})
-	// 	.flatten();
-
-	// const pointMove$ = basePosition$
-	// 	.map(({element}) => {
-	// 		return position$
-	// 			.map(({x, y}) => {
-	// 				element.setAttributeNS(null, 'cx', x);
-	// 				element.setAttributeNS(null, 'cy', y);
-	// 				return null;
-	// 			})
-	// 			.endWhen(endDrag$);
-	// 	})
-	// 	.flatten();
-	// const stateUpdate$ = position$.compose(trigger(endDrag$))
-	// 	.map((point) => {
-	// 		const position = fromField(point);
-	// 		return {
-	// 			...point,
-	// 			...position
-	// 		};
-	// 	});
+	
 	const stateUpdate$ = selectedStart$.map(({id}) => {
 			return cMove$.map(p => ({...p, id}))
 				.endWhen(endDrag$);
@@ -424,9 +328,6 @@ function Field(sources: Sources<State>): Sinks<State> {
 		.flatten();
 	const positionReducer$ = stateUpdate$.map(update => state => updatePlayerState(state, update));
 	
-	// const selectedReducer$ = startDrag$
-	// 	.map(e => parseInt(e.target.dataset['id']))
-	// 	.map(id => (state: State) => Object.assign({}, state, {selected: id}));
 	const selectedReducer$ = selectedStart$
 		.map(({id}) => (state: State) => Object.assign({}, state, {selected: id}));
 
@@ -521,7 +422,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 
 	const fieldBorder$ = state$.map(({fieldType}) => makeField(fieldType));
 
-	const canvas$ = xs.combine(
+	const canvasDraws$ = xs.combine(
 			points.point.map(ps => Object.entries(ps)
 				.filter(([key, p]) => !isNaN(parseInt(key)) && p !== null)
 				.map(([_, p]) => p)),
@@ -546,9 +447,6 @@ function Field(sources: Sources<State>): Sinks<State> {
 			const elementsOnSelected = selected
 				? [colors, deletePlayer]
 				: [];
-			// const elts = Object.entries(elements)
-			// 	.filter(([key, _]) => !isNaN(parseInt(key)))
-			// 	.map(([_, dom]) => dom);
 
 			const {width, height} = fieldSize(fieldType);
 			return div(
@@ -564,17 +462,6 @@ function Field(sources: Sources<State>): Sinks<State> {
 								height
 							}
 						}),
-					// h(
-					// 	'svg',
-					// 	{attrs: {
-					// 		width,
-					// 		height,
-					// 		viewBox: toViewPortStr(fieldViewPort(fieldType))
-					// 	}},
-					// 	[
-					// 		...drawField(),
-					// 		...elts
-					// 	]),
 					...elementsOnSelected
 				]);
 		})
@@ -583,7 +470,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 	return {
 		DOM: vdom$,
 		onion: reducer$,
-		canvas: canvas$
+		canvas: canvasDraws$
 	};
 }
 
