@@ -46,7 +46,7 @@ const makeField = (fieldType: FieldType): Rect[] => {
 };
 
 type ViewPort = {
-	x: number, 
+	x: number,
 	y: number,
 	height: number,
 	width: number
@@ -90,12 +90,12 @@ const toViewPort = (viewport: ViewPort, point: PointItemState): PointItemState |
 		x: point.x - viewport.x,
 		y: point.y - viewport.y
 	});
-	if (0 <= x && x <= viewport.width 
+	if (0 <= x && x <= viewport.width
 			&& 0 <= y && y <= viewport.height) {
 		const {width, height} = fieldSize(point.fieldType);
 		return {
-			...point, 
-			x: x * width / viewport.width, 
+			...point,
+			x: x * width / viewport.width,
 			y: y * height / viewport.height
 		};
 	} else {
@@ -185,14 +185,14 @@ function scale({h}: {h: number}): Scale;
 function scale(i: any): Scale {
 	if (i.w !== undefined) {
 		return {
-			width: i.w, 
+			width: i.w,
 			height: FIELD_HEIGHT * i.w / FIELD_WIDTH,
 			scale: i.w / FIELD_WIDTH
 		};
 	} else if (i.h !== undefined) {
 		const width = i.h * FIELD_WIDTH / FIELD_HEIGHT;
 		return {
-			height: i.h, 
+			height: i.h,
 			width,
 			scale: width / FIELD_WIDTH
 		};
@@ -272,7 +272,7 @@ const associateSelected = (state$: Stream<State>, position$: Stream<Position>) =
 				&& Math.abs(p.y - position.y) <= 10;
 		});
 		return {
-			...position, 
+			...position,
 			id: selected !== undefined ? selected.id : null
 		};
 	});
@@ -285,8 +285,12 @@ type State = {
 	fieldType: FieldType,
 	points: Player[]
 };
+type Props = {
+	idx: number
+};
 type Sources<S> = {
 	DOM: DOMSource,
+	props: Stream<Props>
 	onion: StateSource<S>
 };
 type Sinks<S> = {
@@ -320,14 +324,14 @@ function Field(sources: Sources<State>): Sinks<State> {
 				createPlayer({...position, id}));
 			return {...state, points, selected: id};
 		});
-	
+
 	const stateUpdate$ = selectedStart$.map(({id}) => {
 			return cMove$.map(p => ({...p, id}))
 				.endWhen(endDrag$);
 		})
 		.flatten();
 	const positionReducer$ = stateUpdate$.map(update => state => updatePlayerState(state, update));
-	
+
 	const selectedReducer$ = selectedStart$
 		.map(({id}) => (state: State) => Object.assign({}, state, {selected: id}));
 
@@ -422,16 +426,18 @@ function Field(sources: Sources<State>): Sinks<State> {
 
 	const fieldBorder$ = state$.map(({fieldType}) => makeField(fieldType));
 
-	const canvasDraws$ = xs.combine(
-			points.point.map(ps => Object.entries(ps)
-				.filter(([key, p]) => !isNaN(parseInt(key)) && p !== null)
-				.map(([_, p]) => p)),
-			fieldBorder$)
-		.map(([elements, borders]) => ({
-			id: 'field-canvas',
+	const canvasId$ = sources.props.map(({idx}) => `field-canvas-${idx}`);
+	const canvasPoints$ = xs.combine(
+		points.point.map(ps => Object.entries(ps)
+			.filter(([key, p]) => !isNaN(parseInt(key)) && p !== null)
+			.map(([_, p]) => p)),
+		fieldBorder$);
+	const canvasDraws$ = xs.combine(canvasId$, canvasPoints$)
+		.map(([id, [elements, borders]]) => ({
+			id,
 			drawings: [
 				// Borders first to have points above
-				...borders, 
+				...borders,
 				...elements
 			]
 		}));
@@ -475,6 +481,7 @@ function Field(sources: Sources<State>): Sinks<State> {
 }
 
 export {
+	Props,
 	State,
 	Sources,
 	Sinks,

@@ -71,8 +71,8 @@ function Scenario(sources: Sources): Sinks {
     }
   };
   const field = isolate<
-    FieldSources<FieldState>, 
-    FieldSinks<FieldState>, 
+    FieldSources<FieldState>,
+    FieldSinks<FieldState>,
     FieldState,
     State,
     FieldSources<State>,
